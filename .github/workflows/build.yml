@@ -23,7 +23,7 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -31,27 +31,34 @@ jobs:
           - name: macOS 15, Xcode 16
             runner: macos-15
             toolchain: xcode
-          - name: macOS 26, newest Xcode without SwiftUI macro plugin
+          - name: macOS 26, newest Xcode
             runner: macos-26
-            toolchain: newest-xcode-no-macros
-          - name: macOS 26, Command Line Tools
+            toolchain: newest-xcode
+          - name: macOS 26, newest Command Line Tools
             runner: macos-26
             toolchain: clt
     steps:
       - uses: actions/checkout@v5
 
-      - name: Use Command Line Tools only
+      - name: Use newest Command Line Tools only
         if: matrix.toolchain == 'clt'
-        run: sudo xcode-select -s /Library/Developer/CommandLineTools
-
-      - name: Use newest Xcode and remove its SwiftUI macro plugin
-        if: matrix.toolchain == 'newest-xcode-no-macros'
         run: |
-          ls -d /Applications/Xcode*.app
-          newest=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
-          sudo xcode-select -s "$newest"
-          # Command Line Tools ship without this plugin; removing it reproduces a CLT-only Mac.
-          find "$newest" -name 'libSwiftUIMacros.dylib' -print -exec sudo rm {} \;
+          # Makes softwareupdate offer the Command Line Tools, as Homebrew's installer does.
+          sudo touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+          label=$(softwareupdate --list 2>&1 | grep -E '^[[:space:]]*\* Label: Command Line Tools' | sed -E 's/^[[:space:]]*\* Label: //' | sort -V | tail -1)
+          if [[ -n "$label" ]]; then
+            echo "Installing $label"
+            sudo softwareupdate --install "$label" --agree-to-license
+          else
+            echo "No newer Command Line Tools offered; using the preinstalled ones."
+          fi
+          sudo rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+          sudo xcode-select -s /Library/Developer/CommandLineTools
+          ls /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins
+
+      - name: Use newest Xcode
+        if: matrix.toolchain == 'newest-xcode'
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
 
       - name: Toolchain
         run: |

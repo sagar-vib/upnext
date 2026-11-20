@@ -52,7 +52,7 @@ CODESIGN_IDENTITY="Apple Development: you@example.com" ./build.sh --install
 
 ## Continuous build
 
-Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, on macOS 26 with only the Command Line Tools, and with the newest Xcode on the runner after removing its SwiftUI macro plugin, then launches it for 10 seconds to catch crashes on startup. A separate check fails the build if any SwiftUI macro such as `@State` appears in the sources, because on the macOS 27 SDK those need a plugin that only Xcode ships. See `.github/workflows/build.yml`.
+Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, with the newest Xcode on macOS 26, and on macOS 26 with only the newest Command Line Tools Apple offers for it, then launches it for 10 seconds to catch crashes on startup. A separate check fails the build if any SwiftUI macro such as `@State` appears in the sources, because on the macOS 27 SDK those need a plugin that only Xcode ships. See `.github/workflows/build.yml`.
 
 ## Editing in Xcode
 
