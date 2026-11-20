@@ -52,7 +52,7 @@ CODESIGN_IDENTITY="Apple Development: you@example.com" ./build.sh --install
 
 ## Continuous build
 
-Every push builds the app on GitHub Actions on macOS 14 with Xcode 15, on macOS 26 with the latest Xcode, and on macOS 26 with only the Command Line Tools, then launches it for 10 seconds to catch crashes on startup. See `.github/workflows/build.yml`.
+Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, on macOS 26 with the latest Xcode, and on macOS 26 with only the Command Line Tools, then launches it for 10 seconds to catch crashes on startup. See `.github/workflows/build.yml`.
 
 ## Editing in Xcode
 

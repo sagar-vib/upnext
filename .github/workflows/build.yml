@@ -14,8 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: macOS 14, Xcode 15
-            runner: macos-14
+          - name: macOS 15, Xcode 16
+            runner: macos-15
             toolchain: xcode
           - name: macOS 26, Xcode
             runner: macos-26
@@ -24,7 +24,7 @@ jobs:
             runner: macos-26
             toolchain: clt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Use Command Line Tools only
         if: matrix.toolchain == 'clt'
@@ -66,8 +66,9 @@ jobs:
           pid=$!
           sleep 10
           if kill -0 "$pid" 2>/dev/null; then
-            echo "Upnext is still running after 10 seconds."
+            echo "Upnext is still running after 10 seconds. Its output:"
             kill "$pid"
+            cat launch.log
           else
             status=0
             wait "$pid" || status=$?
