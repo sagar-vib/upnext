@@ -12,6 +12,34 @@ struct DaySection: Identifiable {
     let title: String
     let subtitle: String
     let events: [CalendarEvent]
+
+    /// The events with the free time between consecutive meetings, like a timeline.
+    var items: [AgendaItem] {
+        var items: [AgendaItem] = []
+        var busyUntil: Date?
+        for event in events {
+            if !event.isAllDay {
+                if let busyUntil, event.start >= busyUntil {
+                    items.append(.gap(id: "gap|\(event.id)", length: event.start.timeIntervalSince(busyUntil)))
+                }
+                busyUntil = max(busyUntil ?? event.end, event.end)
+            }
+            items.append(.event(event))
+        }
+        return items
+    }
+}
+
+enum AgendaItem: Identifiable {
+    case event(CalendarEvent)
+    case gap(id: String, length: TimeInterval)
+
+    var id: String {
+        switch self {
+        case .event(let event): event.id
+        case .gap(let id, _): id
+        }
+    }
 }
 
 /// Reads events from every calendar account on this Mac (Google, iCloud, Exchange...)
@@ -104,18 +132,19 @@ final class CalendarStore: ObservableObject {
         return Self.focus(candidates, at: now)
     }
 
-    /// Remaining events grouped by day. Today is always present so the panel can say it's clear.
-    func sections(at now: Date) -> [DaySection] {
+    /// Remaining events grouped by day, leaving out the one on the top card. Today is
+    /// always present, titled "Upcoming", so the panel can say when nothing else is on.
+    func sections(at now: Date, excluding excludedID: String?) -> [DaySection] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
         return (0..<prefs.dayRange.rawValue).compactMap { offset -> DaySection? in
             guard let dayStart = calendar.date(byAdding: .day, value: offset, to: today),
                   let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return nil }
-            let onDay = events.filter { $0.start < dayEnd && $0.end > dayStart && $0.end > now }
+            let onDay = events.filter { $0.id != excludedID && $0.start < dayEnd && $0.end > dayStart && $0.end > now }
             if onDay.isEmpty && offset > 0 { return nil }
             return DaySection(
                 id: dayStart,
-                title: Fmt.dayTitle(dayStart),
+                title: offset == 0 ? "Upcoming" : Fmt.dayTitle(dayStart),
                 subtitle: Fmt.shortDate(dayStart),
                 events: onDay.filter(\.isAllDay) + onDay.filter { !$0.isAllDay }
             )

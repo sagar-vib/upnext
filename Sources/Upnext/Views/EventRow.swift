@@ -113,7 +113,7 @@ struct EventDetails: View {
                     .lineLimit(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            EventActionBar(event: event, calendarApp: calendarApp, showsJoin: true)
+            EventActionBar(event: event, calendarApp: calendarApp)
         }
     }
 }

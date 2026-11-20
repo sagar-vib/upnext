@@ -6,11 +6,11 @@ A native macOS menu bar calendar modeled on Notion Calendar's menu bar widget. S
 
 | Notion Calendar menu bar | Upnext |
 |---|---|
-| Next event title and countdown in the menu bar | Yes. `Weekly sync · in 5m`, then `20m left` once it starts. Calendar icon shows today's date |
+| Next event title and countdown in the menu bar | Yes. `▍Weekly sync · in 5m`, then `20m left` once it starts. A date icon shows only when nothing is coming up |
 | "Preview upcoming event" lead time, title/time toggles | Yes, in Settings > Menu bar |
-| Dropdown with upcoming events grouped by day | Yes. Today, Tomorrow, then weekdays. Ongoing events are tinted |
-| Big "Join Google Meet" button for the current/next meeting | Yes. Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
-| Quick actions: join, copy link, email participants | Yes, on the top card and on every row (hover for Join, click a row for details) |
+| Dropdown with upcoming events grouped by day | Yes. The rest of today under Upcoming, then Tomorrow and weekdays, with the free time between meetings. Times include the duration, e.g. `9:30 PM - 9:55 PM (25 min)` |
+| Big "Join Google Meet" button for the current/next meeting | Yes, with the guests' email addresses listed under it. Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
+| Quick actions: join, copy link, email participants | Yes, on every row (hover for Join, click a row for details and actions) |
 | Event details: guests and their RSVP, rooms, notes | Yes, click a row |
 | Include events: days, all-day, without participants, without conferencing/location | Yes, in Settings > Menu bar |
 | Hide individual calendars from the menu bar | Yes, in Settings > Calendars (also stops their alerts) |

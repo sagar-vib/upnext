@@ -55,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func togglePanel() {
         if panel.isVisible {
             panel.close()
-        } else {
+        } else if !panel.closedMomentsAgo {
             panel.show(makeKey: true)
         }
     }

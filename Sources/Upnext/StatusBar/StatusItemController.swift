@@ -62,15 +62,15 @@ final class StatusItemController: NSObject {
         let now = clock.now
 
         let day = Calendar.current.component(.day, from: now)
-        if day != renderedDay {
-            button.image = Self.calendarIcon(day: day)
-            renderedDay = day
-        }
-
         let title = menuBarTitle(now: now)
-        guard title != renderedTitle else { return }
+        guard title != renderedTitle || day != renderedDay else { return }
         renderedTitle = title
+        renderedDay = day
+
+        // Like Notion Calendar: a bar before the event text. The date icon only appears
+        // when there's no event to show, so the item never shrinks to nothing.
         button.title = title
+        button.image = title.isEmpty ? Self.calendarIcon(day: day) : Self.eventBar
         button.imagePosition = title.isEmpty ? .imageOnly : .imageLeading
     }
 
@@ -85,6 +85,17 @@ final class StatusItemController: NSObject {
             maxLength: prefs.titleLength
         )
     }
+
+    /// Template image of a rounded vertical bar, shown before the event text.
+    private static let eventBar: NSImage = {
+        let image = NSImage(size: NSSize(width: 5, height: 16), flipped: false) { _ in
+            NSColor.black.set()
+            NSBezierPath(roundedRect: NSRect(x: 1, y: 2, width: 3, height: 12), xRadius: 1.5, yRadius: 1.5).fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }()
 
     /// Template image of a calendar page showing the day of the month.
     private static func calendarIcon(day: Int) -> NSImage {

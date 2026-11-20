@@ -43,6 +43,7 @@ final class HostingPanel: NSObject, NSWindowDelegate {
     private var size: CGSize = .zero
     private var clickMonitor: Any?
     private var keyMonitor: Any?
+    private var closedAt = Date.distantPast
 
     init(closesOnOutsideClick: Bool) {
         self.closesOnOutsideClick = closesOnOutsideClick
@@ -67,6 +68,10 @@ final class HostingPanel: NSObject, NSWindowDelegate {
     }
 
     var isVisible: Bool { window.isVisible }
+
+    /// True right after the panel closed. Clicking the menu bar item takes focus from the
+    /// panel, which closes it just before the click's action arrives to toggle it.
+    var closedMomentsAgo: Bool { Date().timeIntervalSince(closedAt) < 0.3 }
 
     func setContent<Content: View>(_ content: Content) {
         let host = FirstMouseHostingView(rootView: SizeReporting(content: content) { [weak self] size in
@@ -104,6 +109,7 @@ final class HostingPanel: NSObject, NSWindowDelegate {
     func close() {
         guard window.isVisible else { return }
         window.orderOut(nil)
+        closedAt = Date()
         if let clickMonitor {
             NSEvent.removeMonitor(clickMonitor)
             self.clickMonitor = nil

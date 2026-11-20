@@ -24,9 +24,12 @@ enum Fmt {
         timeFormatter.string(from: date)
     }
 
-    /// "10:00 AM - 10:30 AM" or "All day".
+    /// "9:30 PM - 9:55 PM (25 min)" or "All day".
     static func range(_ event: CalendarEvent) -> String {
-        event.isAllDay ? "All day" : "\(time(event.start)) - \(time(event.end))"
+        if event.isAllDay { return "All day" }
+        let span = "\(time(event.start)) - \(time(event.end))"
+        let length = event.end.timeIntervalSince(event.start)
+        return length > 0 ? "\(span) (\(duration(length)))" : span
     }
 
     /// "Today", "Tomorrow" or the weekday name.

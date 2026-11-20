@@ -23,9 +23,10 @@ struct PanelView: View {
             case .denied:
                 AccessPrompt(denied: true) { EventActions.openCalendarPrivacySettings() }
             case .granted:
+                let featured = store.featured(at: clock.now)
                 Agenda(
-                    featured: store.featured(at: clock.now),
-                    sections: store.sections(at: clock.now),
+                    featured: featured,
+                    sections: store.sections(at: clock.now, excluding: featured?.id),
                     now: clock.now,
                     calendarApp: prefs.calendarApp,
                     joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil
@@ -83,11 +84,11 @@ private struct Agenda: View {
 
     var body: some View {
         if let featured {
-            FeaturedEventCard(event: featured, now: now, calendarApp: calendarApp, joinShortcut: joinShortcut)
+            FeaturedEventCard(event: featured, now: now, joinShortcut: joinShortcut)
                 .padding(10)
             Divider()
         }
-        if sections.allSatisfy({ $0.events.isEmpty }) {
+        if featured == nil && sections.allSatisfy({ $0.events.isEmpty }) {
             EmptyAgenda()
         } else {
             EventList(sections: sections, now: now, calendarApp: calendarApp)
@@ -99,7 +100,6 @@ private struct Agenda: View {
 private struct FeaturedEventCard: View {
     let event: CalendarEvent
     let now: Date
-    let calendarApp: CalendarApp
     let joinShortcut: String?
 
     var body: some View {
@@ -139,31 +139,30 @@ private struct FeaturedEventCard: View {
                 .buttonStyle(JoinButtonStyle())
             }
 
-            if let summary = meta {
-                Text(summary)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            if !event.guests.isEmpty || place != nil {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(event.guests.prefix(8).enumerated()), id: \.offset) { _, guest in
+                        Text(guest.email ?? guest.name)
+                    }
+                    if event.guests.count > 8 {
+                        Text("and \(event.guests.count - 8) more")
+                    }
+                    if let place {
+                        Text(place)
+                    }
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
             }
-
-            EventActionBar(event: event, calendarApp: calendarApp)
         }
         .padding(12)
         .background(event.color.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
-    /// "5 guests · Room 4B" style line under the join button.
-    private var meta: String? {
-        var parts: [String] = []
-        if !event.guests.isEmpty {
-            parts.append("\(event.guests.count + 1) people")
-        }
-        if !event.rooms.isEmpty {
-            parts.append(event.rooms.joined(separator: ", "))
-        } else if let location = event.displayLocation {
-            parts.append(location)
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    /// Meeting rooms, or the location when there are none.
+    private var place: String? {
+        event.rooms.isEmpty ? event.displayLocation : event.rooms.joined(separator: ", ")
     }
 }
 
@@ -181,21 +180,26 @@ private struct EventList: View {
                 ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
                     DayHeader(section: section, isFirst: index == 0)
                     if section.events.isEmpty {
-                        Text("No more events today")
+                        Text("Nothing else today")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                     }
-                    ForEach(section.events) { event in
-                        let rowID = "\(section.id.timeIntervalSince1970)|\(event.id)"
-                        EventRow(
-                            event: event,
-                            now: now,
-                            calendarApp: calendarApp,
-                            isExpanded: expandedID.wrappedValue == rowID,
-                            onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
-                        )
+                    ForEach(section.items) { item in
+                        switch item {
+                        case .event(let event):
+                            let rowID = "\(section.id.timeIntervalSince1970)|\(event.id)"
+                            EventRow(
+                                event: event,
+                                now: now,
+                                calendarApp: calendarApp,
+                                isExpanded: expandedID.wrappedValue == rowID,
+                                onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
+                            )
+                        case .gap(_, let length):
+                            GapRow(length: length)
+                        }
                     }
                 }
             }
@@ -205,6 +209,20 @@ private struct EventList: View {
             })
         }
         .frame(height: min(max(contentHeight.wrappedValue, 44), 440))
+    }
+}
+
+/// Free time between two meetings, e.g. "30 min".
+private struct GapRow: View {
+    let length: TimeInterval
+
+    var body: some View {
+        Text(length > 0 ? Fmt.duration(length) : "Back to back")
+            .font(.system(size: 10.5))
+            .foregroundStyle(.tertiary)
+            .padding(.leading, 19)
+            .padding(.vertical, 1)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -102,12 +102,11 @@ struct ResponseIcon: View {
 struct EventActionBar: View {
     let event: CalendarEvent
     let calendarApp: CalendarApp
-    var showsJoin = false
     private let copied = State(initialValue: false) // see IconButton
 
     var body: some View {
         HStack(spacing: 2) {
-            if showsJoin, let link = event.meeting {
+            if let link = event.meeting {
                 Button("Join \(link.service.name)") { EventActions.join(event) }
                     .buttonStyle(PillButtonStyle())
                     .padding(.trailing, 4)
