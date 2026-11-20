@@ -1,0 +1,77 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS 14, Xcode 15
+            runner: macos-14
+            toolchain: xcode
+          - name: macOS 26, Xcode
+            runner: macos-26
+            toolchain: xcode
+          - name: macOS 26, Command Line Tools
+            runner: macos-26
+            toolchain: clt
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Command Line Tools only
+        if: matrix.toolchain == 'clt'
+        run: sudo xcode-select -s /Library/Developer/CommandLineTools
+
+      - name: Toolchain
+        run: |
+          xcode-select -p
+          swift --version
+
+      - name: Lint Info.plist
+        run: plutil -lint Resources/Info.plist
+
+      - name: Build Upnext.app
+        run: |
+          set -o pipefail
+          ./build.sh --build-only 2>&1 | tee build.log
+
+      - name: Report compiler diagnostics
+        if: always()
+        run: |
+          pattern='\.swift:[0-9]+:[0-9]+: (error|warning):'
+          if [[ -f build.log ]] && grep -Eq "$pattern" build.log; then
+            grep -E "$pattern" build.log | sort -u | tee diagnostics.txt
+            sed -E 's#^.*/(Sources/[^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$#::\4 file=\1,line=\2,col=\3::\5#' diagnostics.txt
+            { echo '```'; cat diagnostics.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No compiler errors or warnings."
+          fi
+
+      - name: Verify bundle
+        run: |
+          codesign --verify --verbose build/Upnext.app
+          plutil -p build/Upnext.app/Contents/Info.plist
+
+      - name: Launch for 10 seconds
+        run: |
+          build/Upnext.app/Contents/MacOS/Upnext > launch.log 2>&1 &
+          pid=$!
+          sleep 10
+          if kill -0 "$pid" 2>/dev/null; then
+            echo "Upnext is still running after 10 seconds."
+            kill "$pid"
+          else
+            status=0
+            wait "$pid" || status=$?
+            cat launch.log
+            echo "::error::Upnext exited during launch with status $status"
+            exit 1
+          fi
