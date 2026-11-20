@@ -34,23 +34,25 @@ struct IconButton: View {
     let systemImage: String
     let help: String
     let action: () -> Void
-    @State private var hovering = false
+    // `State` as a plain stored property rather than `@State`: in the macOS 27 SDK `@State` is a
+    // macro whose plugin ships only with Xcode, so `@State` breaks Command Line Tools builds.
+    private let hovering = State(initialValue: false)
 
     var body: some View {
         Button {
-            hovering = false
+            hovering.wrappedValue = false
             action()
         } label: {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .medium))
                 .frame(width: 26, height: 22)
-                .background(hovering ? Color.primary.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .background(hovering.wrappedValue ? Color.primary.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
         .help(help)
-        .onHover { hovering = $0 }
+        .onHover { hovering.wrappedValue = $0 }
     }
 }
 
@@ -101,7 +103,7 @@ struct EventActionBar: View {
     let event: CalendarEvent
     let calendarApp: CalendarApp
     var showsJoin = false
-    @State private var copied = false
+    private let copied = State(initialValue: false) // see IconButton
 
     var body: some View {
         HStack(spacing: 2) {
@@ -111,12 +113,12 @@ struct EventActionBar: View {
                     .padding(.trailing, 4)
             }
             if event.meeting != nil {
-                IconButton(systemImage: copied ? "checkmark" : "link", help: "Copy meeting link") {
+                IconButton(systemImage: copied.wrappedValue ? "checkmark" : "link", help: "Copy meeting link") {
                     EventActions.copyLink(event)
-                    copied = true
+                    copied.wrappedValue = true
                     Task {
                         try? await Task.sleep(for: .seconds(1.5))
-                        copied = false
+                        copied.wrappedValue = false
                     }
                 }
             }

@@ -7,7 +7,7 @@ struct EventRow: View {
     let calendarApp: CalendarApp
     let isExpanded: Bool
     let onToggle: () -> Void
-    @State private var hovering = false
+    private let hovering = State(initialValue: false) // see IconButton
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -39,7 +39,7 @@ struct EventRow: View {
         .padding(.vertical, 5)
         .background(background, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
+        .onHover { hovering.wrappedValue = $0 }
         .onTapGesture(perform: onToggle)
     }
 
@@ -52,14 +52,14 @@ struct EventRow: View {
     }
 
     private var background: Color {
-        if event.isOngoing(at: now) { return event.color.opacity(hovering ? 0.22 : 0.14) }
-        return hovering ? Color.primary.opacity(0.07) : Color.clear
+        if event.isOngoing(at: now) { return event.color.opacity(hovering.wrappedValue ? 0.22 : 0.14) }
+        return hovering.wrappedValue ? Color.primary.opacity(0.07) : Color.clear
     }
 
     @ViewBuilder private var trailing: some View {
-        if hovering, event.meeting != nil {
+        if hovering.wrappedValue, event.meeting != nil {
             Button("Join") {
-                hovering = false
+                hovering.wrappedValue = false
                 EventActions.join(event)
             }
             .buttonStyle(PillButtonStyle())

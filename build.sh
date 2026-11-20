@@ -12,9 +12,12 @@ APP_NAME="Upnext"
 APP_DIR="build/${APP_NAME}.app"
 IDENTITY="${CODESIGN_IDENTITY:--}"
 
-# The newer Swift Build backend fails with "Unknown error parsing property list"
-# when only the Command Line Tools are installed (swiftlang/swift-package-manager#10561).
-SWIFT_FLAGS=(-c release --build-system native)
+SWIFT_FLAGS=(-c release)
+# The default Swift Build system fails with "Unknown error parsing property list" when only
+# the Command Line Tools are installed (swiftlang/swift-package-manager#10561).
+if [[ "$(xcode-select -p)" == */CommandLineTools ]]; then
+  SWIFT_FLAGS+=(--build-system native)
+fi
 swift build "${SWIFT_FLAGS[@]}"
 BIN_DIR="$(swift build "${SWIFT_FLAGS[@]}" --show-bin-path)"
 

@@ -42,13 +42,13 @@ struct SettingsView: View {
 
 private struct GeneralSettings: View {
     @ObservedObject var prefs: Preferences
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    private let launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled) // see IconButton
 
     var body: some View {
         Form {
             Section {
-                Toggle("Open Upnext at login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { _, enabled in setLaunchAtLogin(enabled) }
+                Toggle("Open Upnext at login", isOn: launchAtLogin.projectedValue)
+                    .onChange(of: launchAtLogin.wrappedValue) { _, enabled in setLaunchAtLogin(enabled) }
                 Picker("Open events in", selection: $prefs.calendarApp) {
                     ForEach(CalendarApp.allCases) { Text($0.title).tag($0) }
                 }
@@ -77,8 +77,8 @@ private struct GeneralSettings: View {
             NSLog("Upnext: could not update login item: \(error.localizedDescription)")
         }
         let actual = SMAppService.mainApp.status == .enabled
-        if actual != launchAtLogin {
-            launchAtLogin = actual
+        if actual != launchAtLogin.wrappedValue {
+            launchAtLogin.wrappedValue = actual
         }
     }
 }

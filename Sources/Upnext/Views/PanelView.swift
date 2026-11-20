@@ -171,8 +171,9 @@ private struct EventList: View {
     let sections: [DaySection]
     let now: Date
     let calendarApp: CalendarApp
-    @State private var contentHeight: CGFloat = 0
-    @State private var expandedID: String?
+    // Plain `State` storage, see IconButton.
+    private let contentHeight = State(initialValue: CGFloat(0))
+    private let expandedID = State<String?>(initialValue: nil)
 
     var body: some View {
         ScrollView(.vertical) {
@@ -192,18 +193,18 @@ private struct EventList: View {
                             event: event,
                             now: now,
                             calendarApp: calendarApp,
-                            isExpanded: expandedID == rowID,
-                            onToggle: { expandedID = expandedID == rowID ? nil : rowID }
+                            isExpanded: expandedID.wrappedValue == rowID,
+                            onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
                         )
                     }
                 }
             }
             .padding(8)
             .background(GeometryReader { proxy in
-                Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in contentHeight = height }
+                Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in contentHeight.wrappedValue = height }
             })
         }
-        .frame(height: min(max(contentHeight, 44), 440))
+        .frame(height: min(max(contentHeight.wrappedValue, 44), 440))
     }
 }
 

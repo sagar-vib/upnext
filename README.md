@@ -28,7 +28,7 @@ Upnext reads every calendar account on the Mac through EventKit. For Google Cale
 ## Requirements
 
 - macOS 14 Sonoma or later
-- Xcode 15+ or the Command Line Tools (`xcode-select --install`)
+- The Command Line Tools (`xcode-select --install`) or Xcode 16+
 
 ## Build and install
 
@@ -52,7 +52,7 @@ CODESIGN_IDENTITY="Apple Development: you@example.com" ./build.sh --install
 
 ## Continuous build
 
-Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, on macOS 26 with the latest Xcode, and on macOS 26 with only the Command Line Tools, then launches it for 10 seconds to catch crashes on startup. See `.github/workflows/build.yml`.
+Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, on macOS 26 with only the Command Line Tools, and with the newest Xcode on the runner after removing its SwiftUI macro plugin, then launches it for 10 seconds to catch crashes on startup. A separate check fails the build if any SwiftUI macro such as `@State` appears in the sources, because on the macOS 27 SDK those need a plugin that only Xcode ships. See `.github/workflows/build.yml`.
 
 ## Editing in Xcode
 
