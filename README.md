@@ -9,12 +9,12 @@ A native macOS menu bar calendar modeled on Notion Calendar's menu bar widget. S
 | Next event title and countdown in the menu bar | Yes. `▍Weekly sync · in 5m`, then `20m left` once it starts. A date icon shows only when nothing is coming up |
 | "Preview upcoming event" lead time, title/time toggles | Yes, in Settings > Menu bar |
 | Dropdown with upcoming events grouped by day | Yes. The rest of today under Upcoming, then Tomorrow and weekdays, with the free time between meetings. Times include the duration, e.g. `9:30 PM - 9:55 PM (25 min)` |
-| Big "Join Google Meet" button for the current/next meeting | Yes, with the guests' email addresses listed under it. Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
+| Big "Join Google Meet" button for the current/next meeting | Yes, with each guest's email address and reply (accepted, declined, maybe or no reply) under it. Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
 | Quick actions: join a meeting | Yes. The top card's Join button, Join on hovering any row, ⌥V, or Return in the dropdown |
 | Event details: guests and their RSVP, rooms, notes | Yes, click a row |
 | Include events: days, all-day, without participants, without conferencing/location | Yes, in Settings > Menu bar |
 | Hide individual calendars from the menu bar | Yes, in Settings > Calendars (also stops their alerts) |
-| Upcoming meeting popup with Join button, over full screen apps | Yes, top right. Plays a macOS sound or any audio file you pick, such as Notion Calendar's own. Settings > Notifications |
+| Upcoming meeting popup with Join button, over full screen apps | Yes, top right. Plays a macOS sound or any audio file macOS can decode (not Ogg or WebM; Upnext checks when you choose one). Settings > Notifications |
 | Global shortcuts: toggle menu bar calendar, join next meeting | ⌥K and ⌥V (Cron's defaults). Return joins and Esc closes inside the dropdown |
 | Open at login | Yes |
 | Change your RSVP from the menu bar | No. macOS's calendar framework is read-only for responses. Use "Open in Calendar" |

@@ -138,20 +138,13 @@ private struct FeaturedEventCard: View {
             }
 
             if !event.guests.isEmpty || place != nil {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(Array(event.guests.prefix(8).enumerated()), id: \.offset) { _, guest in
-                        Text(guest.email ?? guest.name)
-                    }
-                    if event.guests.count > 8 {
-                        Text("and \(event.guests.count - 8) more")
-                    }
+                VStack(alignment: .leading, spacing: 3) {
+                    GuestList(guests: event.guests)
                     if let place {
-                        Text(place)
+                        DetailLine(systemImage: event.rooms.isEmpty ? "mappin.and.ellipse" : "building.2", text: place)
                     }
                 }
-                .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
             }
         }
         .padding(12)

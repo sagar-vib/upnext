@@ -89,23 +89,7 @@ struct EventDetails: View {
             }
             if !event.guests.isEmpty {
                 DetailLine(systemImage: "person.2", text: Fmt.guestSummary(event.guests))
-                VStack(alignment: .leading, spacing: 3) {
-                    // Same icon column and spacing as DetailLine, so the status icons line up with its icon.
-                    ForEach(Array(event.guests.prefix(8).enumerated()), id: \.offset) { _, guest in
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            ResponseIcon(status: guest.status)
-                                .font(.system(size: 10))
-                                .frame(width: 14)
-                            Text(guest.name).font(.system(size: 11)).lineLimit(1)
-                        }
-                    }
-                    if event.guests.count > 8 {
-                        Text("and \(event.guests.count - 8) more")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 20)
-                    }
-                }
+                GuestList(guests: event.guests)
             }
             if let notes = event.notesSummary {
                 Text(notes)
@@ -118,7 +102,33 @@ struct EventDetails: View {
     }
 }
 
-private struct DetailLine: View {
+/// Each guest's reply and email, in the same icon column as DetailLine so the icons line up.
+struct GuestList: View {
+    let guests: [Attendee]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(guests.prefix(8).enumerated()), id: \.offset) { _, guest in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ResponseIcon(status: guest.status)
+                        .font(.system(size: 10))
+                        .frame(width: 14)
+                    Text(guest.email ?? guest.name)
+                        .font(.system(size: 11))
+                        .lineLimit(1)
+                }
+            }
+            if guests.count > 8 {
+                Text("and \(guests.count - 8) more")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 20)
+            }
+        }
+    }
+}
+
+struct DetailLine: View {
     let systemImage: String
     let text: String
 

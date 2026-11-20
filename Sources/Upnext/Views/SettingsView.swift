@@ -204,6 +204,13 @@ private struct NotificationSettings: View {
         panel.treatsFilePackagesAsDirectories = true
         panel.directoryURL = AlertSound.notionCalendarResources
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard AlertSound.canPlay(url) else {
+            let alert = NSAlert()
+            alert.messageText = "macOS can't play \(url.lastPathComponent)"
+            alert.informativeText = "Convert it to .wav, .m4a or .mp3 first, for example with:\nffmpeg -i \"\(url.lastPathComponent)\" \"\(url.deletingPathExtension().lastPathComponent).wav\""
+            alert.runModal()
+            return
+        }
         prefs.alertSound = url.path
     }
 }
