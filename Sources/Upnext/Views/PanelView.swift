@@ -26,7 +26,7 @@ struct PanelView: View {
                 let featured = store.featured(at: clock.now)
                 Agenda(
                     featured: featured,
-                    sections: store.sections(at: clock.now, excluding: featured?.id),
+                    sections: store.sections(at: clock.now, after: featured),
                     now: clock.now,
                     calendarApp: prefs.calendarApp,
                     joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil

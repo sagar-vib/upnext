@@ -12,11 +12,13 @@ struct DaySection: Identifiable {
     let title: String
     let subtitle: String
     let events: [CalendarEvent]
+    /// End of the top card's meeting when it's on this day, so the first gap counts from it.
+    let startsAfter: Date?
 
     /// The events with the free time between consecutive meetings, like a timeline.
     var items: [AgendaItem] {
         var items: [AgendaItem] = []
-        var busyUntil: Date?
+        var busyUntil = startsAfter
         for event in events {
             if !event.isAllDay {
                 if let busyUntil, event.start >= busyUntil {
@@ -134,19 +136,21 @@ final class CalendarStore: ObservableObject {
 
     /// Remaining events grouped by day, leaving out the one on the top card. Today is
     /// always present, titled "Upcoming", so the panel can say when nothing else is on.
-    func sections(at now: Date, excluding excludedID: String?) -> [DaySection] {
+    func sections(at now: Date, after featured: CalendarEvent?) -> [DaySection] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
         return (0..<prefs.dayRange.rawValue).compactMap { offset -> DaySection? in
             guard let dayStart = calendar.date(byAdding: .day, value: offset, to: today),
                   let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return nil }
-            let onDay = events.filter { $0.id != excludedID && $0.start < dayEnd && $0.end > dayStart && $0.end > now }
+            let onDay = events.filter { $0.id != featured?.id && $0.start < dayEnd && $0.end > dayStart && $0.end > now }
+            let featuredOnDay = featured.map { $0.start < dayEnd && $0.end > dayStart } ?? false
             if onDay.isEmpty && offset > 0 { return nil }
             return DaySection(
                 id: dayStart,
                 title: offset == 0 ? "Upcoming" : Fmt.dayTitle(dayStart),
                 subtitle: Fmt.shortDate(dayStart),
-                events: onDay.filter(\.isAllDay) + onDay.filter { !$0.isAllDay }
+                events: onDay.filter(\.isAllDay) + onDay.filter { !$0.isAllDay },
+                startsAfter: featuredOnDay ? featured?.end : nil
             )
         }
     }
