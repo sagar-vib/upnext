@@ -54,7 +54,7 @@ final class MeetingAlertController: ObservableObject {
             if !due.isEmpty {
                 due.forEach { alerted.insert($0.id) }
                 items.append(contentsOf: due)
-                NSSound(named: NSSound.Name(prefs.alertSound))?.play()
+                AlertSound.play(prefs.alertSound)
                 panel.show(makeKey: false)
             }
         }

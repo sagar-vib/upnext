@@ -1,27 +1,11 @@
 import AppKit
 
-/// Quick actions available from the panel, the top card and meeting alerts.
+/// Actions available from the panel, the top card and meeting alerts.
 @MainActor
 enum EventActions {
     static func join(_ event: CalendarEvent) {
         guard let link = event.meeting else { return }
         NSWorkspace.shared.open(link.launchURL(accountEmail: event.accountEmail))
-    }
-
-    static func copyLink(_ event: CalendarEvent) {
-        guard let link = event.meeting else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(link.url.absoluteString, forType: .string)
-    }
-
-    static func emailGuests(_ event: CalendarEvent) {
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = event.guestEmails.joined(separator: ",")
-        components.queryItems = [URLQueryItem(name: "subject", value: event.title)]
-        if let url = components.url {
-            NSWorkspace.shared.open(url)
-        }
     }
 
     static func open(_ event: CalendarEvent) {

@@ -28,7 +28,6 @@ struct PanelView: View {
                     featured: featured,
                     sections: store.sections(at: clock.now, after: featured),
                     now: clock.now,
-                    calendarApp: prefs.calendarApp,
                     joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil
                 )
             }
@@ -79,7 +78,6 @@ private struct Agenda: View {
     let featured: CalendarEvent?
     let sections: [DaySection]
     let now: Date
-    let calendarApp: CalendarApp
     let joinShortcut: String?
 
     var body: some View {
@@ -91,7 +89,7 @@ private struct Agenda: View {
         if featured == nil && sections.allSatisfy({ $0.events.isEmpty }) {
             EmptyAgenda()
         } else {
-            EventList(sections: sections, now: now, calendarApp: calendarApp)
+            EventList(sections: sections, now: now)
         }
     }
 }
@@ -169,7 +167,6 @@ private struct FeaturedEventCard: View {
 private struct EventList: View {
     let sections: [DaySection]
     let now: Date
-    let calendarApp: CalendarApp
     // Plain `State` storage, see IconButton.
     private let contentHeight = State(initialValue: CGFloat(0))
     private let expandedID = State<String?>(initialValue: nil)
@@ -193,7 +190,6 @@ private struct EventList: View {
                             EventRow(
                                 event: event,
                                 now: now,
-                                calendarApp: calendarApp,
                                 isExpanded: expandedID.wrappedValue == rowID,
                                 onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
                             )

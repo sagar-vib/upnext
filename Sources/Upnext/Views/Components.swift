@@ -97,35 +97,3 @@ struct ResponseIcon: View {
         }
     }
 }
-
-/// Join, copy link, email guests and open in calendar.
-struct EventActionBar: View {
-    let event: CalendarEvent
-    let calendarApp: CalendarApp
-    private let copied = State(initialValue: false) // see IconButton
-
-    var body: some View {
-        HStack(spacing: 2) {
-            if let link = event.meeting {
-                Button("Join \(link.service.name)") { EventActions.join(event) }
-                    .buttonStyle(PillButtonStyle())
-                    .padding(.trailing, 4)
-            }
-            if event.meeting != nil {
-                IconButton(systemImage: copied.wrappedValue ? "checkmark" : "link", help: "Copy meeting link") {
-                    EventActions.copyLink(event)
-                    copied.wrappedValue = true
-                    Task {
-                        try? await Task.sleep(for: .seconds(1.5))
-                        copied.wrappedValue = false
-                    }
-                }
-            }
-            if !event.guestEmails.isEmpty {
-                IconButton(systemImage: "envelope", help: "Email guests") { EventActions.emailGuests(event) }
-            }
-            IconButton(systemImage: "arrow.up.forward.square", help: "Open in \(calendarApp.title)") { EventActions.open(event) }
-            Spacer(minLength: 0)
-        }
-    }
-}

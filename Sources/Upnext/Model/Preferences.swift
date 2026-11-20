@@ -73,10 +73,6 @@ enum CalendarApp: String, CaseIterable, Identifiable {
     }
 }
 
-enum AlertSound {
-    static let all = ["None", "Glass", "Ping", "Pop", "Purr", "Hero", "Submarine", "Tink", "Funk", "Blow", "Bottle", "Frog", "Morse", "Sosumi"]
-}
-
 @MainActor
 final class Preferences: ObservableObject {
     static let shared = Preferences()

@@ -99,7 +99,6 @@ struct CalendarEvent: Identifiable {
 
     var needsResponse: Bool { myStatus == .pending || myStatus == .tentative }
     var isMeeting: Bool { meeting != nil || !guests.isEmpty }
-    var guestEmails: [String] { guests.compactMap(\.email) }
     var dedupeKey: String { "\(title)|\(start.timeIntervalSince1970)|\(end.timeIntervalSince1970)" }
 
     /// The location, unless it's only the meeting URL.

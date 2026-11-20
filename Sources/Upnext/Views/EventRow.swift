@@ -4,7 +4,6 @@ import SwiftUI
 struct EventRow: View {
     let event: CalendarEvent
     let now: Date
-    let calendarApp: CalendarApp
     let isExpanded: Bool
     let onToggle: () -> Void
     private let hovering = State(initialValue: false) // see IconButton
@@ -31,7 +30,7 @@ struct EventRow: View {
             .fixedSize(horizontal: false, vertical: true)
 
             if isExpanded {
-                EventDetails(event: event, calendarApp: calendarApp)
+                EventDetails(event: event)
                     .padding(.leading, 11)
             }
         }
@@ -76,10 +75,9 @@ struct EventRow: View {
     }
 }
 
-/// Shown under a row when it's clicked: where, who, notes and actions.
+/// Shown under a row when it's clicked: where, who and notes.
 struct EventDetails: View {
     let event: CalendarEvent
-    let calendarApp: CalendarApp
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -92,9 +90,12 @@ struct EventDetails: View {
             if !event.guests.isEmpty {
                 DetailLine(systemImage: "person.2", text: Fmt.guestSummary(event.guests))
                 VStack(alignment: .leading, spacing: 3) {
+                    // Same icon column and spacing as DetailLine, so the status icons line up with its icon.
                     ForEach(Array(event.guests.prefix(8).enumerated()), id: \.offset) { _, guest in
-                        HStack(spacing: 6) {
-                            ResponseIcon(status: guest.status).font(.system(size: 10))
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            ResponseIcon(status: guest.status)
+                                .font(.system(size: 10))
+                                .frame(width: 14)
                             Text(guest.name).font(.system(size: 11)).lineLimit(1)
                         }
                     }
@@ -102,9 +103,9 @@ struct EventDetails: View {
                         Text("and \(event.guests.count - 8) more")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
+                            .padding(.leading, 20)
                     }
                 }
-                .padding(.leading, 20)
             }
             if let notes = event.notesSummary {
                 Text(notes)
@@ -113,7 +114,6 @@ struct EventDetails: View {
                     .lineLimit(4)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            EventActionBar(event: event, calendarApp: calendarApp)
         }
     }
 }
