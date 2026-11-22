@@ -17,7 +17,7 @@ struct EventRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(event.title)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(event.needsResponse ? .secondary : .primary)
+                        .foregroundStyle(event.isAllDay ? .secondary : .primary)
                         .lineLimit(1)
                     Text(subtitle)
                         .font(.system(size: 11))

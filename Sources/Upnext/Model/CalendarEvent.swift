@@ -97,7 +97,6 @@ struct CalendarEvent: Identifiable {
         !isAllDay && start <= now && now < end
     }
 
-    var needsResponse: Bool { myStatus == .pending || myStatus == .tentative }
     var isMeeting: Bool { meeting != nil || !guests.isEmpty }
     var dedupeKey: String { "\(title)|\(start.timeIntervalSince1970)|\(end.timeIntervalSince1970)" }
 
