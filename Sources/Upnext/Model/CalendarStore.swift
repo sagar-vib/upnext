@@ -134,25 +134,28 @@ final class CalendarStore: ObservableObject {
         return Self.focus(candidates, at: now)
     }
 
-    /// Remaining events grouped by day, leaving out the one on the top card. Today is
-    /// always present, titled "Upcoming", so the panel can say when nothing else is on.
+    /// Remaining events grouped by day, leaving out the one on the top card and days with
+    /// nothing on. The first day is titled "Upcoming", naming tomorrow when that's the day.
     func sections(at now: Date, after featured: CalendarEvent?) -> [DaySection] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
-        return (0..<prefs.dayRange.rawValue).compactMap { offset -> DaySection? in
+        var sections: [DaySection] = []
+        for offset in 0..<prefs.dayRange.rawValue {
             guard let dayStart = calendar.date(byAdding: .day, value: offset, to: today),
-                  let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return nil }
+                  let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { continue }
             let onDay = events.filter { $0.id != featured?.id && $0.start < dayEnd && $0.end > dayStart && $0.end > now }
+            guard !onDay.isEmpty else { continue }
+            let isFirst = sections.isEmpty
             let featuredOnDay = featured.map { $0.start < dayEnd && $0.end > dayStart } ?? false
-            if onDay.isEmpty && offset > 0 { return nil }
-            return DaySection(
+            sections.append(DaySection(
                 id: dayStart,
-                title: offset == 0 ? "Upcoming" : Fmt.dayTitle(dayStart),
-                subtitle: Fmt.shortDate(dayStart),
+                title: isFirst ? "Upcoming" : Fmt.dayTitle(dayStart),
+                subtitle: isFirst && offset == 1 ? "Tomorrow · \(Fmt.shortDate(dayStart))" : Fmt.shortDate(dayStart),
                 events: onDay.filter(\.isAllDay) + onDay.filter { !$0.isAllDay },
                 startsAfter: featuredOnDay ? featured?.end : nil
-            )
+            ))
         }
+        return sections
     }
 
     private func include(_ event: CalendarEvent) -> Bool {

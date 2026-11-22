@@ -84,12 +84,14 @@ private struct Agenda: View {
         if let featured {
             FeaturedEventCard(event: featured, now: now, joinShortcut: joinShortcut)
                 .padding(10)
-            Divider()
+            if !sections.isEmpty {
+                Divider()
+            }
         }
-        if featured == nil && sections.allSatisfy({ $0.events.isEmpty }) {
-            EmptyAgenda()
-        } else {
+        if !sections.isEmpty {
             EventList(sections: sections, now: now)
+        } else if featured == nil {
+            EmptyAgenda()
         }
     }
 }
@@ -169,13 +171,6 @@ private struct EventList: View {
             VStack(alignment: .leading, spacing: 1) {
                 ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
                     DayHeader(section: section, isFirst: index == 0)
-                    if section.events.isEmpty {
-                        Text("Nothing else today")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                    }
                     ForEach(section.items) { item in
                         switch item {
                         case .event(let event):
