@@ -1,6 +1,17 @@
 import AppKit
 import SwiftUI
 
+extension View {
+    /// The calendar-colored bar down the left of an event, or of a run of back-to-back events.
+    func timelineBar(_ color: Color) -> some View {
+        padding(.leading, 5)
+            .background(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 1.5).fill(color).frame(width: 3)
+            }
+            .padding(.horizontal, 8)
+    }
+}
+
 struct VisualEffectBackground: NSViewRepresentable {
     var material: NSVisualEffectView.Material = .popover
 

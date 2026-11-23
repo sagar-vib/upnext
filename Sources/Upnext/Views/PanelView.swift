@@ -96,6 +96,7 @@ private struct Agenda: View {
     var body: some View {
         if let featured {
             FeaturedEventCard(event: featured, now: now, joinShortcut: joinShortcut)
+                .id(featured.id)
                 .padding(10)
             if !sections.isEmpty {
                 Divider()
@@ -109,11 +110,14 @@ private struct Agenda: View {
     }
 }
 
-/// The current or next event, with a big join button.
+/// The current or next event, with a big join button. Clicking it shows or hides the guests.
 private struct FeaturedEventCard: View {
     let event: CalendarEvent
     let now: Date
     let joinShortcut: String?
+    // Plain `State` storage, see IconButton.
+    private let showsGuests = State(initialValue: false)
+    private let hovering = State(initialValue: false)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -152,9 +156,12 @@ private struct FeaturedEventCard: View {
                 .buttonStyle(JoinButtonStyle())
             }
 
-            if !event.guests.isEmpty || place != nil {
+            let guests = showsGuests.wrappedValue ? event.guests : []
+            if !guests.isEmpty || place != nil {
                 VStack(alignment: .leading, spacing: 3) {
-                    GuestList(guests: event.guests)
+                    if !guests.isEmpty {
+                        GuestList(guests: guests)
+                    }
                     if let place {
                         DetailLine(systemImage: event.rooms.isEmpty ? "mappin.and.ellipse" : "building.2", text: place)
                     }
@@ -163,7 +170,17 @@ private struct FeaturedEventCard: View {
             }
         }
         .padding(12)
-        .background(event.color.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(
+            event.color.opacity(hovering.wrappedValue && !event.guests.isEmpty ? 0.15 : 0.1),
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering.wrappedValue = $0 }
+        .onTapGesture {
+            if !event.guests.isEmpty {
+                showsGuests.wrappedValue = !showsGuests.wrappedValue
+            }
+        }
     }
 
     /// Meeting rooms, or the location when there are none.
@@ -200,24 +217,39 @@ private struct EventList: View {
     private var list: some View {
         VStack(alignment: .leading, spacing: 1) {
             ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
-                DayHeader(section: section, isFirst: index == 0)
+                if let title = section.title {
+                    DayHeader(title: title, subtitle: section.subtitle, isFirst: index == 0)
+                }
                 ForEach(section.items) { item in
                     switch item {
-                    case .event(let event):
-                        let rowID = "\(section.id.timeIntervalSince1970)|\(event.id)"
-                        EventRow(
-                            event: event,
-                            now: now,
-                            isExpanded: expandedID.wrappedValue == rowID,
-                            onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
-                        )
+                    case .meetings(let events):
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(events) { event in
+                                row(event, in: section)
+                            }
+                        }
+                        .timelineBar(events[0].color)
                     case .gap(_, let length):
                         GapRow(length: length)
+                    case .allDay(let event):
+                        row(event, in: section)
+                            .timelineBar(event.color)
+                            .padding(.top, 4)
                     }
                 }
             }
         }
         .padding(8)
+    }
+
+    private func row(_ event: CalendarEvent, in section: DaySection) -> EventRow {
+        let rowID = "\(section.id.timeIntervalSince1970)|\(event.id)"
+        return EventRow(
+            event: event,
+            now: now,
+            isExpanded: expandedID.wrappedValue == rowID,
+            onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
+        )
     }
 }
 
@@ -236,16 +268,17 @@ private struct GapRow: View {
 }
 
 private struct DayHeader: View {
-    let section: DaySection
+    let title: String
+    let subtitle: String
     let isFirst: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(section.title.uppercased())
+            Text(title.uppercased())
                 .font(.system(size: 10, weight: .semibold))
                 .tracking(0.6)
                 .foregroundStyle(.secondary)
-            Text(section.subtitle)
+            Text(subtitle)
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
             Spacer()

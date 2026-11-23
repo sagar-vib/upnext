@@ -11,9 +11,6 @@ struct EventRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(event.color)
-                    .frame(width: 3)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(event.title)
                         .font(.system(size: 13, weight: .medium))
@@ -27,14 +24,12 @@ struct EventRow: View {
                 Spacer(minLength: 6)
                 trailing
             }
-            .fixedSize(horizontal: false, vertical: true)
 
             if isExpanded {
                 EventDetails(event: event)
-                    .padding(.leading, 11)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 6)
         .padding(.vertical, 5)
         .background(background, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
         .contentShape(Rectangle())

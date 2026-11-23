@@ -9,37 +9,52 @@ enum CalendarAccess {
 
 struct DaySection: Identifiable {
     let id: Date
-    let title: String
+    /// Nil for today, which the panel's own header already names.
+    let title: String?
     let subtitle: String
     let events: [CalendarEvent]
     /// End of the top card's meeting when it's on this day, so the first gap counts from it.
     let startsAfter: Date?
 
-    /// The events with the free time between consecutive meetings, like a timeline.
+    /// The day as a timeline: back-to-back or overlapping meetings share one bar, real free
+    /// time between them gets a gap row, and all-day events go at the bottom.
     var items: [AgendaItem] {
         var items: [AgendaItem] = []
+        var run: [CalendarEvent] = []
         var busyUntil = startsAfter
-        for event in events {
-            if !event.isAllDay {
+        for event in events where !event.isAllDay {
+            let continuesRun = !run.isEmpty && busyUntil.map { event.start <= $0 } == true
+            if !continuesRun {
+                if !run.isEmpty {
+                    items.append(.meetings(run))
+                    run = []
+                }
                 if let busyUntil, event.start >= busyUntil {
                     items.append(.gap(id: "gap|\(event.id)", length: event.start.timeIntervalSince(busyUntil)))
                 }
-                busyUntil = max(busyUntil ?? event.end, event.end)
             }
-            items.append(.event(event))
+            run.append(event)
+            busyUntil = max(busyUntil ?? event.end, event.end)
         }
-        return items
+        if !run.isEmpty {
+            items.append(.meetings(run))
+        }
+        return items + events.filter(\.isAllDay).map(AgendaItem.allDay)
     }
 }
 
 enum AgendaItem: Identifiable {
-    case event(CalendarEvent)
+    /// One meeting, or a run of back-to-back or overlapping meetings sharing one bar.
+    case meetings([CalendarEvent])
+    /// Free time before the next meeting; zero only right after the top card's meeting.
     case gap(id: String, length: TimeInterval)
+    case allDay(CalendarEvent)
 
     var id: String {
         switch self {
-        case .event(let event): event.id
+        case .meetings(let events): "meetings|\(events.first?.id ?? "")"
         case .gap(let id, _): id
+        case .allDay(let event): "allday|\(event.id)"
         }
     }
 }
@@ -135,7 +150,7 @@ final class CalendarStore: ObservableObject {
     }
 
     /// Remaining events grouped by day, leaving out the one on the top card and days with
-    /// nothing on. The first day is titled "Upcoming", naming tomorrow when that's the day.
+    /// nothing on. Today has no header; a later first day is "Upcoming", naming tomorrow.
     func sections(at now: Date, after featured: CalendarEvent?) -> [DaySection] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
@@ -149,9 +164,9 @@ final class CalendarStore: ObservableObject {
             let featuredOnDay = featured.map { $0.start < dayEnd && $0.end > dayStart } ?? false
             sections.append(DaySection(
                 id: dayStart,
-                title: isFirst ? "Upcoming" : Fmt.dayTitle(dayStart),
+                title: isFirst ? (offset == 0 ? nil : "Upcoming") : Fmt.dayTitle(dayStart),
                 subtitle: isFirst && offset == 1 ? "Tomorrow · \(Fmt.shortDate(dayStart))" : Fmt.shortDate(dayStart),
-                events: onDay.filter(\.isAllDay) + onDay.filter { !$0.isAllDay },
+                events: onDay,
                 startsAfter: featuredOnDay ? featured?.end : nil
             ))
         }

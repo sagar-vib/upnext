@@ -8,8 +8,8 @@ A native macOS menu bar calendar modeled on Notion Calendar's menu bar widget. S
 |---|---|
 | Next event title and countdown in the menu bar | Yes. `▍Weekly sync · in 5m`, then `20m left` once it starts. A date icon shows only when nothing is coming up |
 | "Preview upcoming event" lead time, title/time toggles | Yes, in Settings > Menu bar |
-| Dropdown with upcoming events grouped by day | Yes. The next day with meetings under Upcoming (named when it's tomorrow), then the following days, with the free time between meetings. Days with nothing on are skipped. Times include the duration, e.g. `9:30 PM - 9:55 PM (25 min)` |
-| Big "Join Google Meet" button for the current/next meeting | Yes, with each guest's email address and reply (accepted, declined, maybe or no reply) under it. Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
+| Dropdown with upcoming events grouped by day | Yes, as a timeline: back-to-back meetings share one colored bar, free time between meetings shows as a small row, and all-day events sit at the bottom of each day. Today's meetings follow the top card with no extra header; a later first day is labelled Upcoming, and days with nothing on are skipped. Times include the duration, e.g. `9:30 PM - 9:55 PM (25 min)` |
+| Big "Join Google Meet" button for the current/next meeting | Yes. Click the card to show or hide each guest's email address and reply (accepted, declined, maybe or no reply). Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
 | Quick actions: join a meeting | Yes. The top card's Join button, Join on hovering any row, ⌥V, or Return in the dropdown |
 | Event details: guests and their RSVP, rooms, notes | Yes, click a row |
 | Include events: days, all-day, without participants, without conferencing/location | Yes, in Settings > Menu bar |
