@@ -6,11 +6,22 @@ struct PanelCommands {
     let quit: () -> Void
 }
 
+/// Counts how often the dropdown has closed, so its list can start at the top next time.
+@MainActor
+final class PanelSession: ObservableObject {
+    @Published private(set) var closes = 0
+
+    func didClose() {
+        closes += 1
+    }
+}
+
 /// The dropdown under the menu bar item.
 struct PanelView: View {
     @ObservedObject var store: CalendarStore
     @ObservedObject var clock: Clock
     @ObservedObject var prefs: Preferences
+    @ObservedObject var session: PanelSession
     let commands: PanelCommands
 
     var body: some View {
@@ -28,7 +39,8 @@ struct PanelView: View {
                     featured: featured,
                     sections: store.sections(at: clock.now, after: featured),
                     now: clock.now,
-                    joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil
+                    joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil,
+                    scrollResetToken: session.closes
                 )
             }
         }
@@ -79,6 +91,7 @@ private struct Agenda: View {
     let sections: [DaySection]
     let now: Date
     let joinShortcut: String?
+    let scrollResetToken: Int
 
     var body: some View {
         if let featured {
@@ -89,7 +102,7 @@ private struct Agenda: View {
             }
         }
         if !sections.isEmpty {
-            EventList(sections: sections, now: now)
+            EventList(sections: sections, now: now, scrollResetToken: scrollResetToken)
         } else if featured == nil {
             EmptyAgenda()
         }
@@ -162,37 +175,49 @@ private struct FeaturedEventCard: View {
 private struct EventList: View {
     let sections: [DaySection]
     let now: Date
+    /// Changes whenever the list should jump back to its first day.
+    let scrollResetToken: Int
     // Plain `State` storage, see IconButton.
     private let contentHeight = State(initialValue: CGFloat(0))
     private let expandedID = State<String?>(initialValue: nil)
 
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 1) {
-                ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
-                    DayHeader(section: section, isFirst: index == 0)
-                    ForEach(section.items) { item in
-                        switch item {
-                        case .event(let event):
-                            let rowID = "\(section.id.timeIntervalSince1970)|\(event.id)"
-                            EventRow(
-                                event: event,
-                                now: now,
-                                isExpanded: expandedID.wrappedValue == rowID,
-                                onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
-                            )
-                        case .gap(_, let length):
-                            GapRow(length: length)
-                        }
+        ScrollViewReader { scroller in
+            ScrollView(.vertical) {
+                list
+                    .id(Self.top)
+                    .background(GeometryReader { proxy in
+                        Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in contentHeight.wrappedValue = height }
+                    })
+            }
+            .onChange(of: scrollResetToken) { scroller.scrollTo(Self.top, anchor: .top) }
+        }
+        .frame(height: min(max(contentHeight.wrappedValue, 44), 440))
+    }
+
+    private static let top = "top"
+
+    private var list: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                DayHeader(section: section, isFirst: index == 0)
+                ForEach(section.items) { item in
+                    switch item {
+                    case .event(let event):
+                        let rowID = "\(section.id.timeIntervalSince1970)|\(event.id)"
+                        EventRow(
+                            event: event,
+                            now: now,
+                            isExpanded: expandedID.wrappedValue == rowID,
+                            onToggle: { expandedID.wrappedValue = expandedID.wrappedValue == rowID ? nil : rowID }
+                        )
+                    case .gap(_, let length):
+                        GapRow(length: length)
                     }
                 }
             }
-            .padding(8)
-            .background(GeometryReader { proxy in
-                Color.clear.onChange(of: proxy.size.height, initial: true) { _, height in contentHeight.wrappedValue = height }
-            })
         }
-        .frame(height: min(max(contentHeight.wrappedValue, 44), 440))
+        .padding(8)
     }
 }
 

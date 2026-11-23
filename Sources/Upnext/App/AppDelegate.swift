@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: CalendarStore!
     private var statusItem: StatusItemController!
     private var panel: HostingPanel!
+    private var panelSession: PanelSession!
     private var alerts: MeetingAlertController!
     private var settings: SettingsWindowController!
     private var cancellables = Set<AnyCancellable>()
@@ -23,10 +24,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alerts = MeetingAlertController(store: store, clock: clock, prefs: prefs)
 
         panel = HostingPanel(closesOnOutsideClick: true)
+        panelSession = PanelSession()
         panel.setContent(PanelView(
             store: store,
             clock: clock,
             prefs: prefs,
+            session: panelSession,
             commands: PanelCommands(
                 openSettings: { [weak self] in self?.openSettings() },
                 refresh: { [weak self] in self?.store.reload() },
@@ -34,7 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         ))
         panel.placement = { [weak self] size in self?.panelOrigin(for: size) ?? .zero }
-        panel.onVisibilityChange = { [weak self] visible in self?.statusItem.setHighlighted(visible) }
+        panel.onVisibilityChange = { [weak self] visible in
+            self?.statusItem.setHighlighted(visible)
+            if !visible {
+                self?.panelSession.didClose()
+            }
+        }
         panel.keyHandler = { [weak self] event in self?.handlePanelKey(event) ?? false }
         statusItem.onClick = { [weak self] in self?.togglePanel() }
 
