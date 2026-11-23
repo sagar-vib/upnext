@@ -95,9 +95,13 @@ private struct Agenda: View {
 
     var body: some View {
         if let featured {
-            FeaturedEventCard(event: featured, now: now, joinShortcut: joinShortcut)
-                .id(featured.id)
-                .padding(10)
+            FeaturedSection(
+                event: featured,
+                now: now,
+                joinShortcut: joinShortcut,
+                continuesIntoList: sections.first?.joinsTopMeeting == true
+            )
+            .id(featured.id)
             if !sections.isEmpty {
                 Divider()
             }
@@ -110,11 +114,14 @@ private struct Agenda: View {
     }
 }
 
-/// The current or next event, with a big join button. Clicking it shows or hides the guests.
-private struct FeaturedEventCard: View {
+/// The current or next meeting, filling the band between the dividers. Clicking it shows or
+/// hides the guests. When the next meeting follows straight on, its bar runs down to the list
+/// and the Join button moves in beside it.
+private struct FeaturedSection: View {
     let event: CalendarEvent
     let now: Date
     let joinShortcut: String?
+    let continuesIntoList: Bool
     // Plain `State` storage, see IconButton.
     private let showsGuests = State(initialValue: false)
     private let hovering = State(initialValue: false)
@@ -131,55 +138,75 @@ private struct FeaturedEventCard: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(alignment: .top, spacing: 8) {
-                Capsule()
-                    .fill(event.color)
-                    .frame(width: 3)
-                Text(event.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-
-            if let link = event.meeting {
-                Button { EventActions.join(event) } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "video.fill")
-                        Text("Join \(link.service.name)")
-                        Spacer(minLength: 0)
-                        if let joinShortcut {
-                            Text(joinShortcut).opacity(0.7)
-                        }
-                    }
+            if continuesIntoList {
+                VStack(alignment: .leading, spacing: 9) {
+                    title
+                    joinButton
+                    details
                 }
-                .buttonStyle(JoinButtonStyle())
-            }
-
-            let guests = showsGuests.wrappedValue ? event.guests : []
-            if !guests.isEmpty || place != nil {
-                VStack(alignment: .leading, spacing: 3) {
-                    if !guests.isEmpty {
-                        GuestList(guests: guests)
-                    }
-                    if let place {
-                        DetailLine(systemImage: event.rooms.isEmpty ? "mappin.and.ellipse" : "building.2", text: place)
-                    }
+                .padding(.leading, 11)
+                .padding(.bottom, 14)
+                .background(alignment: .leading) {
+                    TimelineBarShape(roundedTop: true, roundedBottom: false).fill(event.color).frame(width: 3)
                 }
-                .foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .top, spacing: 8) {
+                    TimelineBarShape(roundedTop: true, roundedBottom: true).fill(event.color).frame(width: 3)
+                    title
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                joinButton
+                details
             }
         }
-        .padding(12)
-        .background(
-            event.color.opacity(hovering.wrappedValue && !event.guests.isEmpty ? 0.15 : 0.1),
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-        )
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, continuesIntoList ? 0 : 14)
+        .background(event.color.opacity(hovering.wrappedValue && !event.guests.isEmpty ? 0.15 : 0.1))
         .contentShape(Rectangle())
         .onHover { hovering.wrappedValue = $0 }
         .onTapGesture {
             if !event.guests.isEmpty {
                 showsGuests.wrappedValue = !showsGuests.wrappedValue
             }
+        }
+    }
+
+    private var title: some View {
+        Text(event.title)
+            .font(.system(size: 14, weight: .semibold))
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private var joinButton: some View {
+        if let link = event.meeting {
+            Button { EventActions.join(event) } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "video.fill")
+                    Text("Join \(link.service.name)")
+                    Spacer(minLength: 0)
+                    if let joinShortcut {
+                        Text(joinShortcut).opacity(0.7)
+                    }
+                }
+            }
+            .buttonStyle(JoinButtonStyle())
+        }
+    }
+
+    @ViewBuilder private var details: some View {
+        let guests = showsGuests.wrappedValue ? event.guests : []
+        if !guests.isEmpty || place != nil {
+            VStack(alignment: .leading, spacing: 3) {
+                if !guests.isEmpty {
+                    GuestList(guests: guests)
+                }
+                if let place {
+                    DetailLine(systemImage: event.rooms.isEmpty ? "mappin.and.ellipse" : "building.2", text: place)
+                }
+            }
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -222,13 +249,18 @@ private struct EventList: View {
                 }
                 ForEach(section.items) { item in
                     switch item {
-                    case .meetings(let events):
+                    case .run(let run):
                         VStack(alignment: .leading, spacing: 2) {
-                            ForEach(events) { event in
-                                row(event, in: section)
+                            ForEach(run.entries) { entry in
+                                switch entry {
+                                case .join(_, let overlap):
+                                    JoinLabel(overlap: overlap)
+                                case .event(let event):
+                                    row(event, in: section)
+                                }
                             }
                         }
-                        .timelineBar(events[0].color)
+                        .timelineBar(run.color, continuesAbove: run.continuesAbove)
                     case .gap(_, let length):
                         GapRow(length: length)
                     case .allDay(let event):
@@ -239,7 +271,10 @@ private struct EventList: View {
                 }
             }
         }
-        .padding(8)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+        // A bar continuing from the top section starts right at the divider.
+        .padding(.top, sections.first?.joinsTopMeeting == true ? 0 : 8)
     }
 
     private func row(_ event: CalendarEvent, in section: DaySection) -> EventRow {
@@ -258,11 +293,26 @@ private struct GapRow: View {
     let length: TimeInterval
 
     var body: some View {
-        Text(length > 0 ? Fmt.duration(length) : "Back to back")
+        Text(Fmt.duration(length))
             .font(.system(size: 10.5))
             .foregroundStyle(.tertiary)
             .padding(.leading, 19)
             .padding(.vertical, 1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Inside a run's bar, where a meeting joins the one before: "Back to back" or "Overlaps 15 min".
+private struct JoinLabel: View {
+    let overlap: TimeInterval
+
+    var body: some View {
+        Text(overlap > 0 ? "Overlaps \(Fmt.duration(overlap))" : "Back to back")
+            .font(.system(size: 10.5))
+            .foregroundStyle(.tertiary)
+            .padding(.leading, 6)
+            .padding(.top, 4)
+            .padding(.bottom, 1)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

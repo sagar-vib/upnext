@@ -3,12 +3,29 @@ import SwiftUI
 
 extension View {
     /// The calendar-colored bar down the left of an event, or of a run of back-to-back events.
-    func timelineBar(_ color: Color) -> some View {
+    /// `continuesAbove` squares its top so it meets the bar of the meeting above.
+    func timelineBar(_ color: Color, continuesAbove: Bool = false) -> some View {
         padding(.leading, 5)
             .background(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 1.5).fill(color).frame(width: 3)
+                TimelineBarShape(roundedTop: !continuesAbove, roundedBottom: true).fill(color).frame(width: 3)
             }
             .padding(.horizontal, 8)
+    }
+}
+
+/// A 3pt bar whose ends are rounded unless it joins another bar there.
+struct TimelineBarShape: Shape {
+    let roundedTop: Bool
+    let roundedBottom: Bool
+
+    func path(in rect: CGRect) -> Path {
+        UnevenRoundedRectangle(
+            topLeadingRadius: roundedTop ? 1.5 : 0,
+            bottomLeadingRadius: roundedBottom ? 1.5 : 0,
+            bottomTrailingRadius: roundedBottom ? 1.5 : 0,
+            topTrailingRadius: roundedTop ? 1.5 : 0
+        )
+        .path(in: rect)
     }
 }
 

@@ -16,43 +16,82 @@ struct DaySection: Identifiable {
     /// End of the top card's meeting when it's on this day, so the first gap counts from it.
     let startsAfter: Date?
 
-    /// The day as a timeline: back-to-back or overlapping meetings share one bar, real free
-    /// time between them gets a gap row, and all-day events go at the bottom.
+    /// The day as a timeline: meetings with no free time between them share one bar, with a
+    /// "Back to back" or "Overlaps" label where each joins the one before. Free time gets a gap
+    /// row, and all-day events go at the bottom. A first meeting that starts as the top
+    /// card's meeting ends (or during it) begins with a label too, continuing that bar.
     var items: [AgendaItem] {
         var items: [AgendaItem] = []
-        var run: [CalendarEvent] = []
+        var run = MeetingRun()
         var busyUntil = startsAfter
         for event in events where !event.isAllDay {
-            let continuesRun = !run.isEmpty && busyUntil.map { event.start <= $0 } == true
-            if !continuesRun {
-                if !run.isEmpty {
-                    items.append(.meetings(run))
-                    run = []
+            if let end = busyUntil, event.start <= end {
+                run.entries.append(.join(id: "join|\(event.id)", overlap: min(end, event.end).timeIntervalSince(event.start)))
+            } else {
+                if !run.entries.isEmpty {
+                    items.append(.run(run))
+                    run = MeetingRun()
                 }
-                if let busyUntil, event.start >= busyUntil {
-                    items.append(.gap(id: "gap|\(event.id)", length: event.start.timeIntervalSince(busyUntil)))
+                if let end = busyUntil {
+                    items.append(.gap(id: "gap|\(event.id)", length: event.start.timeIntervalSince(end)))
                 }
             }
-            run.append(event)
+            run.entries.append(.event(event))
             busyUntil = max(busyUntil ?? event.end, event.end)
         }
-        if !run.isEmpty {
-            items.append(.meetings(run))
+        if !run.entries.isEmpty {
+            items.append(.run(run))
         }
         return items + events.filter(\.isAllDay).map(AgendaItem.allDay)
+    }
+
+    /// True when the first meeting starts as the top card's meeting ends, or during it.
+    var joinsTopMeeting: Bool {
+        guard let startsAfter, let first = events.first(where: { !$0.isAllDay }) else { return false }
+        return first.start <= startsAfter
+    }
+}
+
+/// Meetings with no free time between them, drawn with one continuous bar.
+struct MeetingRun {
+    var entries: [RunEntry] = []
+
+    var color: Color {
+        for case .event(let event) in entries {
+            return event.color
+        }
+        return .accentColor
+    }
+
+    /// Starts with a label because it continues the top card's meeting.
+    var continuesAbove: Bool {
+        if case .join? = entries.first { return true }
+        return false
+    }
+}
+
+enum RunEntry: Identifiable {
+    /// Where a meeting joins the ones before it: back to back, or overlapping by `overlap`.
+    case join(id: String, overlap: TimeInterval)
+    case event(CalendarEvent)
+
+    var id: String {
+        switch self {
+        case .join(let id, _): id
+        case .event(let event): event.id
+        }
     }
 }
 
 enum AgendaItem: Identifiable {
-    /// One meeting, or a run of back-to-back or overlapping meetings sharing one bar.
-    case meetings([CalendarEvent])
-    /// Free time before the next meeting; zero only right after the top card's meeting.
+    case run(MeetingRun)
+    /// Free time before the next meeting.
     case gap(id: String, length: TimeInterval)
     case allDay(CalendarEvent)
 
     var id: String {
         switch self {
-        case .meetings(let events): "meetings|\(events.first?.id ?? "")"
+        case .run(let run): "run|\(run.entries.first?.id ?? "")"
         case .gap(let id, _): id
         case .allDay(let event): "allday|\(event.id)"
         }
