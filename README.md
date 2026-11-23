@@ -13,6 +13,7 @@ A native macOS menu bar calendar modeled on Notion Calendar's menu bar widget. S
 | Quick actions: join a meeting | Yes. The top card's Join button, Join on hovering any row, ⌥V, or Return in the dropdown |
 | Event details: guests and their RSVP, rooms, notes | Yes, click a row |
 | Include events: days, all-day, without participants, without conferencing/location | Yes, in Settings > Menu bar |
+| Late-night meetings count toward the day they belong to | Yes. A day runs from 4 AM to 4 AM by default, so a 12:30 AM call stays under today. Change it in Settings > Menu bar > New day starts at |
 | Hide individual calendars from the menu bar | Yes, in Settings > Calendars (also stops their alerts) |
 | Upcoming meeting popup with Join button, over full screen apps | Yes, top right. Plays a macOS sound or any audio file macOS can decode (not Ogg or WebM; Upnext checks when you choose one). Settings > Notifications |
 | Global shortcuts: toggle menu bar calendar, join next meeting | ⌥K and ⌥V (Cron's defaults). Return joins and Esc closes inside the dropdown |
@@ -73,6 +74,7 @@ Sources/Upnext/
     MeetingLink.swift            join link detection and app hand-off
     Preferences.swift            all settings, persisted to UserDefaults
     Clock.swift                  1 second tick for countdowns
+    WorkDay.swift                days that start at 4 AM (or another hour) instead of midnight
   StatusBar/StatusItemController.swift   menu bar title, countdown and date icon
   Support/
     HostingPanel.swift           borderless floating panel that sizes to SwiftUI content

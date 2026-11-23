@@ -26,7 +26,7 @@ struct PanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(now: clock.now, calendarApp: prefs.calendarApp, commands: commands)
+            PanelHeader(day: prefs.workDay.start(containing: clock.now), calendarApp: prefs.calendarApp, commands: commands)
             Divider()
             switch store.access {
             case .notDetermined:
@@ -39,6 +39,7 @@ struct PanelView: View {
                     featured: featured,
                     sections: store.sections(at: clock.now, after: featured),
                     now: clock.now,
+                    workDay: prefs.workDay,
                     joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil,
                     scrollResetToken: session.closes
                 )
@@ -50,16 +51,16 @@ struct PanelView: View {
 }
 
 private struct PanelHeader: View {
-    let now: Date
+    let day: Date
     let calendarApp: CalendarApp
     let commands: PanelCommands
 
     var body: some View {
         HStack(spacing: 2) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(now.formatted(.dateTime.weekday(.wide)))
+                Text(day.formatted(.dateTime.weekday(.wide)))
                     .font(.system(size: 13, weight: .semibold))
-                Text(now.formatted(.dateTime.month(.wide).day()))
+                Text(day.formatted(.dateTime.month(.wide).day()))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -90,6 +91,7 @@ private struct Agenda: View {
     let featured: CalendarEvent?
     let sections: [DaySection]
     let now: Date
+    let workDay: WorkDay
     let joinShortcut: String?
     let scrollResetToken: Int
 
@@ -98,6 +100,7 @@ private struct Agenda: View {
             FeaturedSection(
                 event: featured,
                 now: now,
+                workDay: workDay,
                 joinShortcut: joinShortcut,
                 continuesIntoList: sections.first?.joinsTopMeeting == true
             )
@@ -120,6 +123,7 @@ private struct Agenda: View {
 private struct FeaturedSection: View {
     let event: CalendarEvent
     let now: Date
+    let workDay: WorkDay
     let joinShortcut: String?
     let continuesIntoList: Bool
     // Plain `State` storage, see IconButton.
@@ -129,7 +133,7 @@ private struct FeaturedSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack {
-                Text(Fmt.relative(event, now: now))
+                Text(Fmt.relative(event, now: now, workDay: workDay))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(event.color)
                 Spacer()

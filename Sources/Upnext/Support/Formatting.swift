@@ -32,12 +32,13 @@ enum Fmt {
         return length > 0 ? "\(span) (\(duration(length)))" : span
     }
 
-    /// "Today", "Tomorrow" or the weekday name.
-    static func dayTitle(_ day: Date) -> String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(day) { return "Today" }
-        if calendar.isDateInTomorrow(day) { return "Tomorrow" }
-        return weekdayFormatter.string(from: day)
+    /// "Today", "Tomorrow" or the weekday of `date`, for a day `offset` days from today.
+    static func dayTitle(offset: Int, date: Date) -> String {
+        switch offset {
+        case 0: "Today"
+        case 1: "Tomorrow"
+        default: weekdayFormatter.string(from: date)
+        }
     }
 
     /// "Fri, Nov 20".
@@ -61,17 +62,18 @@ enum Fmt {
         return rest == 0 ? "\(hours) hr" : "\(hours) hr \(rest) min"
     }
 
-    /// Top card label: "In 12 min", "Now · 18 min left", "Tomorrow, 9:00 AM".
-    static func relative(_ event: CalendarEvent, now: Date) -> String {
+    /// Top meeting label: "In 12 min", "Now · 18 min left", "Tomorrow, 9:00 AM".
+    static func relative(_ event: CalendarEvent, now: Date, workDay: WorkDay) -> String {
         if event.isOngoing(at: now) {
             return "Now · \(duration(event.end.timeIntervalSince(now))) left"
         }
         let until = event.start.timeIntervalSince(now)
         if until < 60 { return "Starting now" }
-        if Calendar.current.isDate(event.start, inSameDayAs: now) || until < 6 * 3600 {
+        let offset = workDay.offset(of: event.start, from: now)
+        if offset == 0 || until < 6 * 3600 {
             return "In \(duration(until))"
         }
-        return "\(dayTitle(event.start)), \(time(event.start))"
+        return "\(dayTitle(offset: offset, date: workDay.start(containing: event.start))), \(time(event.start))"
     }
 
     /// Alert label: "Starts in 1 min", "Starting now", "Started 2 min ago".

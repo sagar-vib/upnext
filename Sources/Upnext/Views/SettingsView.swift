@@ -107,6 +107,14 @@ private struct MenuBarSettings: View {
                 Toggle("All-day events", isOn: $prefs.includeAllDay)
                 Toggle("Events without guests", isOn: $prefs.includeWithoutGuests)
                 Toggle("Events without video link or location", isOn: $prefs.includeWithoutLocation)
+                Picker("New day starts at", selection: $prefs.dayStartHour) {
+                    ForEach(0...6, id: \.self) { hour in
+                        Text(hour == 0 ? "Midnight" : "\(hour) AM").tag(hour)
+                    }
+                }
+                Text("Meetings before this time show with the previous day, for late-night calls across time zones.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

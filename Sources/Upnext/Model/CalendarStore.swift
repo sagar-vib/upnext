@@ -109,6 +109,7 @@ final class CalendarStore: ObservableObject {
     private let eventStore = EKEventStore()
     private let prefs: Preferences
     private var cancellables = Set<AnyCancellable>()
+    private var nextDayReload: AnyCancellable?
 
     init(prefs: Preferences) {
         self.prefs = prefs
@@ -153,21 +154,30 @@ final class CalendarStore: ObservableObject {
             }
             .sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
 
+        let today = prefs.workDay.start(containing: Date())
+        reloadWhenNextDayStarts(after: today)
         let visible = calendars.filter { !prefs.hiddenCalendarIDs.contains($0.calendarIdentifier) }
-        let startOfToday = Calendar.current.startOfDay(for: Date())
         guard !visible.isEmpty,
-              let end = Calendar.current.date(byAdding: .day, value: prefs.dayRange.rawValue, to: startOfToday) else {
+              let end = Calendar.current.date(byAdding: .day, value: prefs.dayRange.rawValue, to: today) else {
             events = []
             return
         }
 
-        let predicate = eventStore.predicateForEvents(withStart: startOfToday, end: end, calendars: visible)
+        let predicate = eventStore.predicateForEvents(withStart: today, end: end, calendars: visible)
         var seen = Set<String>()
         events = eventStore.events(matching: predicate)
             .map { CalendarEvent($0) }
             .filter { include($0) }
             .sorted(by: Self.chronological)
             .filter { seen.insert($0.dedupeKey).inserted }
+    }
+
+    /// "Today" moves on at the day's start hour, not at midnight, so reload then.
+    private func reloadWhenNextDayStarts(after today: Date) {
+        guard let next = Calendar.current.date(byAdding: .day, value: 1, to: today) else { return }
+        nextDayReload = Just(())
+            .delay(for: .seconds(max(1, next.timeIntervalSinceNow + 1)), scheduler: RunLoop.main)
+            .sink { [weak self] in self?.reload() }
     }
 
     /// The event the menu bar and the top card focus on: the meeting in progress,
@@ -189,21 +199,30 @@ final class CalendarStore: ObservableObject {
     }
 
     /// Remaining events grouped by day, leaving out the one on the top card and days with
-    /// nothing on. Today has no header; a later first day is "Upcoming", naming tomorrow.
+    /// nothing on. Days start at the day start hour, so late-night meetings stay with the day
+    /// they belong to; all-day events stay on their calendar date. Today has no header; a
+    /// later first day is "Upcoming", naming tomorrow.
     func sections(at now: Date, after featured: CalendarEvent?) -> [DaySection] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: now)
+        let today = prefs.workDay.start(containing: now)
         var sections: [DaySection] = []
         for offset in 0..<prefs.dayRange.rawValue {
             guard let dayStart = calendar.date(byAdding: .day, value: offset, to: today),
                   let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { continue }
-            let onDay = events.filter { $0.id != featured?.id && $0.start < dayEnd && $0.end > dayStart && $0.end > now }
+            let date = calendar.startOfDay(for: dayStart)
+            guard let dateEnd = calendar.date(byAdding: .day, value: 1, to: date) else { continue }
+            let onDay = events.filter { event in
+                guard event.id != featured?.id else { return false }
+                return event.isAllDay
+                    ? event.start < dateEnd && event.end > date
+                    : event.start < dayEnd && event.end > dayStart && event.end > now
+            }
             guard !onDay.isEmpty else { continue }
             let isFirst = sections.isEmpty
             let featuredOnDay = featured.map { $0.start < dayEnd && $0.end > dayStart } ?? false
             sections.append(DaySection(
                 id: dayStart,
-                title: isFirst ? (offset == 0 ? nil : "Upcoming") : Fmt.dayTitle(dayStart),
+                title: isFirst ? (offset == 0 ? nil : "Upcoming") : Fmt.dayTitle(offset: offset, date: dayStart),
                 subtitle: isFirst && offset == 1 ? "Tomorrow · \(Fmt.shortDate(dayStart))" : Fmt.shortDate(dayStart),
                 events: onDay,
                 startsAfter: featuredOnDay ? featured?.end : nil

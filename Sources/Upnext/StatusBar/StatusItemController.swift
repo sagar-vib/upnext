@@ -61,7 +61,7 @@ final class StatusItemController: NSObject {
         guard let button = statusItem.button else { return }
         let now = clock.now
 
-        let day = Calendar.current.component(.day, from: now)
+        let day = Calendar.current.component(.day, from: prefs.workDay.start(containing: now))
         let title = menuBarTitle(now: now)
         guard title != renderedTitle || day != renderedDay else { return }
         renderedTitle = title

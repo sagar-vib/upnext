@@ -85,6 +85,8 @@ final class Preferences: ObservableObject {
 
     // Included events
     @Published var dayRange = Preferences.option("dayRange", DayRange.twoDays) { didSet { save("dayRange", dayRange.rawValue) } }
+    /// Hour the day starts at; meetings before it belong to the previous day.
+    @Published var dayStartHour = Preferences.value("dayStartHour", 4) { didSet { save("dayStartHour", dayStartHour) } }
     @Published var includeAllDay = Preferences.value("includeAllDay", true) { didSet { save("includeAllDay", includeAllDay) } }
     @Published var includeWithoutGuests = Preferences.value("includeWithoutGuests", true) { didSet { save("includeWithoutGuests", includeWithoutGuests) } }
     @Published var includeWithoutLocation = Preferences.value("includeWithoutLocation", true) { didSet { save("includeWithoutLocation", includeWithoutLocation) } }
@@ -99,6 +101,8 @@ final class Preferences: ObservableObject {
     @Published var calendarApp = Preferences.option("calendarApp", CalendarApp.apple) { didSet { save("calendarApp", calendarApp.rawValue) } }
 
     private init() {}
+
+    var workDay: WorkDay { WorkDay(startHour: dayStartHour) }
 
     private func save(_ key: String, _ value: Any) {
         UserDefaults.standard.set(value, forKey: key)
