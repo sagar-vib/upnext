@@ -6,10 +6,15 @@ import UniformTypeIdentifiers
 @MainActor
 final class SettingsWindowController {
     private var window: NSWindow?
+    /// Light or dark for the Settings window; nil follows the system.
+    var appearance: NSAppearance? {
+        didSet { window?.appearance = appearance }
+    }
 
     func show(store: CalendarStore, prefs: Preferences) {
         if window == nil {
             window = Self.makeWindow(store: store, prefs: prefs)
+            window?.appearance = appearance
         }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
@@ -55,6 +60,10 @@ private struct GeneralSettings: View {
                 Picker("Open events in", selection: $prefs.calendarApp) {
                     ForEach(CalendarApp.allCases) { Text($0.title).tag($0) }
                 }
+                Picker("Appearance", selection: $prefs.appearance) {
+                    ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
             Section("Keyboard shortcuts") {
                 Toggle("Enable system-wide shortcuts", isOn: $prefs.globalShortcuts)

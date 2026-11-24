@@ -54,6 +54,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefs.$globalShortcuts
             .sink { [weak self] enabled in self?.configureShortcuts(enabled: enabled) }
             .store(in: &cancellables)
+        prefs.$appearance
+            .sink { [weak self] appearance in self?.applyAppearance(appearance) }
+            .store(in: &cancellables)
 
         if store.access == .notDetermined {
             Task { await store.requestAccess() }
@@ -106,6 +109,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default:
             return false
         }
+    }
+
+    /// Light or dark for the dropdown, meeting alerts and Settings, whatever the system uses.
+    /// Set per window, so the menu bar item keeps following the menu bar.
+    private func applyAppearance(_ appearance: AppAppearance) {
+        let nsAppearance: NSAppearance? = switch appearance {
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        case .system: nil
+        }
+        panel.window.appearance = nsAppearance
+        alerts.appearance = nsAppearance
+        settings.appearance = nsAppearance
     }
 
     private func configureShortcuts(enabled: Bool) {

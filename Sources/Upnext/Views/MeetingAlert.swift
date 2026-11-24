@@ -30,6 +30,12 @@ final class MeetingAlertController: ObservableObject {
             .store(in: &cancellables)
     }
 
+    /// Light or dark for the alert cards; nil follows the system.
+    var appearance: NSAppearance? {
+        get { panel.window.appearance }
+        set { panel.window.appearance = newValue }
+    }
+
     func join(_ event: CalendarEvent) {
         EventActions.join(event)
         dismiss(event)

@@ -60,6 +60,20 @@ enum AlertLead: Int, CaseIterable, Identifiable {
     }
 }
 
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case light, dark, system
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .light: "Light"
+        case .dark: "Dark"
+        case .system: "System"
+        }
+    }
+}
+
 enum CalendarApp: String, CaseIterable, Identifiable {
     case apple, google
 
@@ -102,6 +116,8 @@ final class Preferences: ObservableObject {
     // General
     @Published var globalShortcuts = Preferences.value("globalShortcuts", true) { didSet { save("globalShortcuts", globalShortcuts) } }
     @Published var calendarApp = Preferences.option("calendarApp", CalendarApp.apple) { didSet { save("calendarApp", calendarApp.rawValue) } }
+    /// Look of Upnext's own windows. The menu bar item always matches the menu bar.
+    @Published var appearance = Preferences.option("appearance", AppAppearance.system) { didSet { save("appearance", appearance.rawValue) } }
 
     private init() {}
 

@@ -315,28 +315,63 @@ private struct EventList: View {
     }
 }
 
-/// Free time between two meetings, e.g. "30 min".
+/// Free time between two meetings, e.g. "30 min", colored by how much room it leaves, with a
+/// dotted line in the bar column joining the meetings above and below.
 private struct GapRow: View {
     let length: TimeInterval
 
     var body: some View {
+        let color = GapUrgency(length).color
         Text(Fmt.duration(length))
             .font(.system(size: 10.5))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(color)
             .padding(.leading, 19)
-            .padding(.vertical, 1)
+            .padding(.vertical, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(alignment: .leading) {
+                // Centered under the 3pt bars, reaching across the 1pt list spacing to touch them.
+                VerticalLine()
+                    .stroke(color, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [0, 4]))
+                    .frame(width: 2)
+                    .padding(.vertical, -1)
+                    .padding(.leading, 8.5)
+            }
+    }
+}
+
+private struct VerticalLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        }
+    }
+}
+
+private extension GapUrgency {
+    // Apple's higher-contrast system colors, so 10.5pt text stays readable on the panel.
+    static let tightColor = Color.adaptive(light: 0xD70015, dark: 0xFF6961)
+    static let shortColor = Color.adaptive(light: 0xA16207, dark: 0xF2C14E)
+    static let roomyColor = Color.adaptive(light: 0x1E7A35, dark: 0x3DD068)
+
+    var color: Color {
+        switch self {
+        case .tight: Self.tightColor
+        case .short: Self.shortColor
+        case .roomy: Self.roomyColor
+        }
     }
 }
 
 /// Inside a run's bar, where a meeting joins the one before: "Back to back" or "Overlaps 15 min".
+/// No time between them, so it's in the tight color.
 private struct JoinLabel: View {
     let overlap: TimeInterval
 
     var body: some View {
         Text(overlap > 0 ? "Overlaps \(Fmt.duration(overlap))" : "Back to back")
             .font(.system(size: 10.5))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(GapUrgency.tight.color)
             .padding(.leading, 6)
             .padding(.top, 4)
             .padding(.bottom, 1)

@@ -101,6 +101,22 @@ enum AgendaItem: Identifiable {
     }
 }
 
+/// How much breathing room the time between two meetings leaves.
+enum GapUrgency {
+    /// Under 15 minutes, including back to back and overlapping meetings.
+    case tight
+    /// 15 to 30 minutes.
+    case short
+    /// 30 minutes or more.
+    case roomy
+
+    /// Judged on whole minutes rounded up, as the gap is shown, so "15 min" is never tight.
+    init(_ length: TimeInterval) {
+        let minutes = (length / 60).rounded(.up)
+        self = minutes < 15 ? .tight : minutes < 30 ? .short : .roomy
+    }
+}
+
 /// Reads events from every calendar account on this Mac (Google, iCloud, Exchange...)
 /// and keeps them current as calendars, the day, or the preferences change.
 @MainActor
