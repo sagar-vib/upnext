@@ -136,6 +136,13 @@ final class CalendarStore: ObservableObject {
         reload()
     }
 
+    /// Asks macOS to sync calendar accounts whose local copy it considers out of date. Returns
+    /// at once; anything new arrives as an EKEventStoreChanged notification, which reloads.
+    func syncAccounts() {
+        guard access == .granted else { return }
+        eventStore.refreshSourcesIfNecessary()
+    }
+
     func requestAccess() async {
         _ = try? await eventStore.requestFullAccessToEvents()
         reload()

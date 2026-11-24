@@ -32,14 +32,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             session: panelSession,
             commands: PanelCommands(
                 openSettings: { [weak self] in self?.openSettings() },
-                refresh: { [weak self] in self?.store.reload() },
+                refresh: { [weak self] in
+                    self?.store.syncAccounts()
+                    self?.store.reload()
+                },
                 quit: { NSApp.terminate(nil) }
             )
         ))
         panel.placement = { [weak self] size in self?.panelOrigin(for: size) ?? .zero }
         panel.onVisibilityChange = { [weak self] visible in
             self?.statusItem.setHighlighted(visible)
-            if !visible {
+            if visible {
+                self?.store.syncAccounts()
+            } else {
                 self?.panelSession.didClose()
             }
         }
