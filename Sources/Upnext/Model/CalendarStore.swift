@@ -18,13 +18,14 @@ struct DaySection: Identifiable {
 
     /// The day as a timeline: meetings with no free time between them share one bar, with a
     /// "Back to back" or "Overlaps" label where each joins the one before. Free time gets a gap
-    /// row, and all-day events go at the bottom. A first meeting that starts as the top
-    /// card's meeting ends (or during it) begins with a label too, continuing that bar.
+    /// row. Declined meetings go below the timeline, then all-day events. A first meeting that
+    /// starts as the top card's meeting ends (or during it) begins with a label too, continuing
+    /// that bar.
     var items: [AgendaItem] {
         var items: [AgendaItem] = []
         var run = MeetingRun()
         var busyUntil = startsAfter
-        for event in events where !event.isAllDay {
+        for event in events where event.isBusy {
             if let end = busyUntil, event.start <= end {
                 run.entries.append(.join(id: "join|\(event.id)", overlap: min(end, event.end).timeIntervalSince(event.start)))
             } else {
@@ -42,12 +43,13 @@ struct DaySection: Identifiable {
         if !run.entries.isEmpty {
             items.append(.run(run))
         }
-        return items + events.filter(\.isAllDay).map(AgendaItem.allDay)
+        let declined = events.filter { !$0.isAllDay && !$0.isBusy }
+        return items + (declined + events.filter(\.isAllDay)).map(AgendaItem.aside)
     }
 
     /// True when the first meeting starts as the top card's meeting ends, or during it.
     var joinsTopMeeting: Bool {
-        guard let startsAfter, let first = events.first(where: { !$0.isAllDay }) else { return false }
+        guard let startsAfter, let first = events.first(where: \.isBusy) else { return false }
         return first.start <= startsAfter
     }
 }
@@ -87,14 +89,31 @@ enum AgendaItem: Identifiable {
     case run(MeetingRun)
     /// Free time before the next meeting.
     case gap(id: String, length: TimeInterval)
-    case allDay(CalendarEvent)
+    /// Below the timeline, with a dimmed bar: declined meetings, then all-day events.
+    case aside(CalendarEvent)
 
     var id: String {
         switch self {
         case .run(let run): "run|\(run.entries.first?.id ?? "")"
         case .gap(let id, _): id
-        case .allDay(let event): "allday|\(event.id)"
+        case .aside(let event): "aside|\(event.id)"
         }
+    }
+}
+
+/// How much breathing room the time between two meetings leaves.
+enum GapUrgency {
+    /// Under 15 minutes, including back to back and overlapping meetings.
+    case tight
+    /// 15 to 30 minutes.
+    case short
+    /// 30 minutes or more.
+    case roomy
+
+    /// Judged on whole minutes rounded up, as the gap is shown, so "15 min" is never tight.
+    init(_ length: TimeInterval) {
+        let minutes = (length / 60).rounded(.up)
+        self = minutes < 15 ? .tight : minutes < 30 ? .short : .roomy
     }
 }
 
@@ -105,6 +124,9 @@ final class CalendarStore: ObservableObject {
     @Published private(set) var access: CalendarAccess
     @Published private(set) var calendarGroups: [CalendarGroup] = []
     @Published private(set) var events: [CalendarEvent] = []
+    /// Meetings marked done before they end, by event ID, with the time each was due to end.
+    /// Kept across launches until that time passes.
+    @Published private(set) var markedDone: [String: Date]
 
     private let eventStore = EKEventStore()
     private let prefs: Preferences
@@ -114,6 +136,7 @@ final class CalendarStore: ObservableObject {
     init(prefs: Preferences) {
         self.prefs = prefs
         self.access = Self.currentAccess()
+        self.markedDone = UserDefaults.standard.dictionary(forKey: Self.markedDoneKey) as? [String: Date] ?? [:]
 
         let center = NotificationCenter.default
         Publishers.Merge4(
@@ -129,12 +152,20 @@ final class CalendarStore: ObservableObject {
         reload()
     }
 
+    /// Asks macOS to sync calendar accounts whose local copy it considers out of date. Returns
+    /// at once; anything new arrives as an EKEventStoreChanged notification, which reloads.
+    func syncAccounts() {
+        guard access == .granted else { return }
+        eventStore.refreshSourcesIfNecessary()
+    }
+
     func requestAccess() async {
         _ = try? await eventStore.requestFullAccessToEvents()
         reload()
     }
 
     func reload() {
+        forgetFinishedDoneMarks()
         access = Self.currentAccess()
         guard access == .granted else {
             calendarGroups = []
@@ -164,10 +195,11 @@ final class CalendarStore: ObservableObject {
         }
 
         let predicate = eventStore.predicateForEvents(withStart: today, end: end, calendars: visible)
+        let hiddenTitles = prefs.hiddenTitleKeys
         var seen = Set<String>()
         events = eventStore.events(matching: predicate)
             .map { CalendarEvent($0) }
-            .filter { include($0) }
+            .filter { include($0, hiddenTitles: hiddenTitles) }
             .sorted(by: Self.chronological)
             .filter { seen.insert($0.dedupeKey).inserted }
     }
@@ -180,10 +212,16 @@ final class CalendarStore: ObservableObject {
             .sink { [weak self] in self?.reload() }
     }
 
+    /// A timed meeting you're going to that hasn't ended or been marked done. Only these
+    /// reach the top card, the menu bar, the join shortcut and alerts.
+    func isActive(_ event: CalendarEvent, at now: Date) -> Bool {
+        event.isBusy && event.end > now && markedDone[event.id] == nil
+    }
+
     /// The event the menu bar and the top card focus on: the meeting in progress,
     /// or the next one if it starts within 10 minutes or nothing is in progress.
     func featured(at now: Date) -> CalendarEvent? {
-        Self.focus(events.filter { !$0.isAllDay && $0.end > now }, at: now)
+        Self.focus(events.filter { isActive($0, at: now) }, at: now)
     }
 
     /// The meeting the join shortcut opens: the featured event when it has a link,
@@ -193,15 +231,31 @@ final class CalendarStore: ObservableObject {
             return featured
         }
         let candidates = events.filter {
-            !$0.isAllDay && $0.meeting != nil && $0.end > now && $0.start.timeIntervalSince(now) <= 30 * 60
+            isActive($0, at: now) && $0.meeting != nil && $0.start.timeIntervalSince(now) <= 30 * 60
         }
         return Self.focus(candidates, at: now)
     }
 
-    /// Remaining events grouped by day, leaving out the one on the top card and days with
-    /// nothing on. Days start at the day start hour, so late-night meetings stay with the day
-    /// they belong to; all-day events stay on their calendar date. Today has no header; a
-    /// later first day is "Upcoming", naming tomorrow.
+    /// Ends a meeting early: the top card and the menu bar move on to the next one.
+    func markDone(_ event: CalendarEvent) {
+        markedDone[event.id] = event.end
+        saveMarkedDone()
+    }
+
+    func restore(_ event: CalendarEvent) {
+        markedDone[event.id] = nil
+        saveMarkedDone()
+    }
+
+    /// Meetings marked done that haven't reached their scheduled end, so they can be restored.
+    func doneEvents(at now: Date) -> [CalendarEvent] {
+        events.filter { markedDone[$0.id] != nil && $0.end > now }
+    }
+
+    /// Remaining events grouped by day, leaving out the one on the top card, meetings marked
+    /// done and days with nothing on. Days start at the day start hour, so late-night meetings
+    /// stay with the day they belong to; all-day events stay on their calendar date. Today has
+    /// no header; a later first day is "Upcoming", naming tomorrow.
     func sections(at now: Date, after featured: CalendarEvent?) -> [DaySection] {
         let calendar = Calendar.current
         let today = prefs.workDay.start(containing: now)
@@ -212,7 +266,7 @@ final class CalendarStore: ObservableObject {
             let date = calendar.startOfDay(for: dayStart)
             guard let dateEnd = calendar.date(byAdding: .day, value: 1, to: date) else { continue }
             let onDay = events.filter { event in
-                guard event.id != featured?.id else { return false }
+                guard event.id != featured?.id, markedDone[event.id] == nil else { return false }
                 return event.isAllDay
                     ? event.start < dateEnd && event.end > date
                     : event.start < dayEnd && event.end > dayStart && event.end > now
@@ -231,12 +285,27 @@ final class CalendarStore: ObservableObject {
         return sections
     }
 
-    private func include(_ event: CalendarEvent) -> Bool {
-        if event.isCanceled || event.myStatus == .declined { return false }
+    private func include(_ event: CalendarEvent, hiddenTitles: Set<String>) -> Bool {
+        if event.isCanceled || hiddenTitles.contains(Preferences.titleKey(event.title)) { return false }
+        if event.myStatus == .declined && !prefs.includeDeclined { return false }
         if event.isAllDay && !prefs.includeAllDay { return false }
         if event.guests.isEmpty && !prefs.includeWithoutGuests { return false }
         if event.meeting == nil && event.location == nil && !prefs.includeWithoutLocation { return false }
         return true
+    }
+
+    private static let markedDoneKey = "markedDone"
+
+    private func saveMarkedDone() {
+        UserDefaults.standard.set(markedDone, forKey: Self.markedDoneKey)
+    }
+
+    /// Drops done marks for meetings whose scheduled end has passed.
+    private func forgetFinishedDoneMarks() {
+        let now = Date()
+        guard markedDone.values.contains(where: { $0 <= now }) else { return }
+        markedDone = markedDone.filter { $0.value > now }
+        saveMarkedDone()
     }
 
     nonisolated private static func focus(_ candidates: [CalendarEvent], at now: Date) -> CalendarEvent? {

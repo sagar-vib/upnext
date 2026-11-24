@@ -6,10 +6,15 @@ import UniformTypeIdentifiers
 @MainActor
 final class SettingsWindowController {
     private var window: NSWindow?
+    /// Light or dark for the Settings window; nil follows the system.
+    var appearance: NSAppearance? {
+        didSet { window?.appearance = appearance }
+    }
 
     func show(store: CalendarStore, prefs: Preferences) {
         if window == nil {
             window = Self.makeWindow(store: store, prefs: prefs)
+            window?.appearance = appearance
         }
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
@@ -55,6 +60,10 @@ private struct GeneralSettings: View {
                 Picker("Open events in", selection: $prefs.calendarApp) {
                     ForEach(CalendarApp.allCases) { Text($0.title).tag($0) }
                 }
+                Picker("Appearance", selection: $prefs.appearance) {
+                    ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
             Section("Keyboard shortcuts") {
                 Toggle("Enable system-wide shortcuts", isOn: $prefs.globalShortcuts)
@@ -63,6 +72,7 @@ private struct GeneralSettings: View {
             }
             Section("In the menu bar calendar") {
                 LabeledContent("Join current or next meeting", value: "Return")
+                LabeledContent("Mark current meeting as done", value: "⌘D")
                 LabeledContent("Close", value: "Esc")
             }
         }
@@ -88,6 +98,7 @@ private struct GeneralSettings: View {
 
 private struct MenuBarSettings: View {
     @ObservedObject var prefs: Preferences
+    private let newHiddenTitle = State(initialValue: "") // see IconButton
 
     var body: some View {
         Form {
@@ -105,6 +116,7 @@ private struct MenuBarSettings: View {
                     ForEach(DayRange.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("All-day events", isOn: $prefs.includeAllDay)
+                Toggle("Declined events", isOn: $prefs.includeDeclined)
                 Toggle("Events without guests", isOn: $prefs.includeWithoutGuests)
                 Toggle("Events without video link or location", isOn: $prefs.includeWithoutLocation)
                 Picker("New day starts at", selection: $prefs.dayStartHour) {
@@ -116,8 +128,38 @@ private struct MenuBarSettings: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            Section("Hide events titled") {
+                ForEach(prefs.hiddenTitles, id: \.self) { title in
+                    HStack {
+                        Text(title)
+                        Spacer()
+                        Button {
+                            prefs.hiddenTitles.removeAll { $0 == title }
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Show events titled \u{201C}\(title)\u{201D} again")
+                    }
+                }
+                HStack {
+                    TextField("Title", text: newHiddenTitle.projectedValue, prompt: Text("Add a title, e.g. Focus time"))
+                        .labelsHidden()
+                        .onSubmit(addHiddenTitle)
+                    Button("Add", action: addHiddenTitle)
+                        .disabled(newHiddenTitle.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                Text("Matches the whole title, ignoring case, whoever created the event. Hidden events don't show in the menu bar and don't trigger meeting alerts.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+    }
+
+    private func addHiddenTitle() {
+        prefs.hideTitle(newHiddenTitle.wrappedValue)
+        newHiddenTitle.wrappedValue = ""
     }
 }
 

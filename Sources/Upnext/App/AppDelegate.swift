@@ -32,14 +32,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             session: panelSession,
             commands: PanelCommands(
                 openSettings: { [weak self] in self?.openSettings() },
-                refresh: { [weak self] in self?.store.reload() },
+                refresh: { [weak self] in
+                    self?.store.syncAccounts()
+                    self?.store.reload()
+                },
                 quit: { NSApp.terminate(nil) }
             )
         ))
         panel.placement = { [weak self] size in self?.panelOrigin(for: size) ?? .zero }
         panel.onVisibilityChange = { [weak self] visible in
             self?.statusItem.setHighlighted(visible)
-            if !visible {
+            if visible {
+                self?.store.syncAccounts()
+            } else {
                 self?.panelSession.didClose()
             }
         }
@@ -48,6 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         prefs.$globalShortcuts
             .sink { [weak self] enabled in self?.configureShortcuts(enabled: enabled) }
+            .store(in: &cancellables)
+        prefs.$appearance
+            .sink { [weak self] appearance in self?.applyAppearance(appearance) }
             .store(in: &cancellables)
 
         if store.access == .notDetermined {
@@ -77,6 +85,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EventActions.join(event)
     }
 
+    /// Ends the top card's meeting early, so the dropdown and menu bar move on to the next one.
+    private func markCurrentDone() {
+        let now = Date()
+        guard let event = store.featured(at: now), event.isOngoing(at: now) else {
+            NSSound.beep()
+            return
+        }
+        store.markDone(event)
+    }
+
     private func handlePanelKey(_ event: NSEvent) -> Bool {
         switch event.keyCode {
         case 53: // Esc
@@ -85,9 +103,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case 36, 76: // Return, Enter
             joinUpcoming()
             return true
+        case 2 where event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command: // ⌘D
+            markCurrentDone()
+            return true
         default:
             return false
         }
+    }
+
+    /// Light or dark for the dropdown, meeting alerts and Settings, whatever the system uses.
+    /// Set per window, so the menu bar item keeps following the menu bar.
+    private func applyAppearance(_ appearance: AppAppearance) {
+        let nsAppearance: NSAppearance? = switch appearance {
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        case .system: nil
+        }
+        panel.window.appearance = nsAppearance
+        alerts.appearance = nsAppearance
+        settings.appearance = nsAppearance
     }
 
     private func configureShortcuts(enabled: Bool) {

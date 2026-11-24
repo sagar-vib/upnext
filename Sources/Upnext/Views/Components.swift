@@ -13,6 +13,26 @@ extension View {
     }
 }
 
+extension Color {
+    /// One sRGB color, given as 0xRRGGBB, in light mode and another in dark mode.
+    static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            NSColor(hex: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)
+        })
+    }
+}
+
+private extension NSColor {
+    convenience init(hex: UInt32) {
+        self.init(
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+}
+
 /// A 3pt bar whose ends are rounded unless it joins another bar there.
 struct TimelineBarShape: Shape {
     let roundedTop: Bool
@@ -61,6 +81,7 @@ struct PanelSurface: ViewModifier {
 struct IconButton: View {
     let systemImage: String
     let help: String
+    var height: CGFloat = 22
     let action: () -> Void
     // `State` as a plain stored property rather than `@State`: in the macOS 27 SDK `@State` is a
     // macro whose plugin ships only with Xcode, so `@State` breaks Command Line Tools builds.
@@ -73,7 +94,7 @@ struct IconButton: View {
         } label: {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .medium))
-                .frame(width: 26, height: 22)
+                .frame(width: 26, height: height)
                 .background(hovering.wrappedValue ? Color.primary.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .contentShape(Rectangle())
         }

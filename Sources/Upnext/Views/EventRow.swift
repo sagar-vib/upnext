@@ -14,7 +14,8 @@ struct EventRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(event.title)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(event.isAllDay ? .secondary : .primary)
+                        .strikethrough(event.myStatus == .declined)
+                        .foregroundStyle(event.isBusy ? .primary : .secondary)
                         .lineLimit(1)
                     Text(subtitle)
                         .font(.system(size: 11))
@@ -45,8 +46,11 @@ struct EventRow: View {
         }
     }
 
+    /// In progress and not declined: highlighted and marked "Now".
+    private var isNow: Bool { event.isBusy && event.isOngoing(at: now) }
+
     private var background: Color {
-        if event.isOngoing(at: now) { return event.color.opacity(hovering.wrappedValue ? 0.22 : 0.14) }
+        if isNow { return event.color.opacity(hovering.wrappedValue ? 0.22 : 0.14) }
         return hovering.wrappedValue ? Color.primary.opacity(0.07) : Color.clear
     }
 
@@ -57,7 +61,7 @@ struct EventRow: View {
                 EventActions.join(event)
             }
             .buttonStyle(PillButtonStyle())
-        } else if event.isOngoing(at: now) {
+        } else if isNow {
             Text("Now")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(event.color)
