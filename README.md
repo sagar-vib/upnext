@@ -8,19 +8,21 @@ A native macOS menu bar calendar modeled on Notion Calendar's menu bar widget. S
 |---|---|
 | Next event title and countdown in the menu bar | Yes. `▍Weekly sync · in 5m`, then `20m left` once it starts. A date icon shows only when nothing is coming up |
 | "Preview upcoming event" lead time, title/time toggles | Yes, in Settings > Menu bar |
-| Dropdown with upcoming events grouped by day | Yes, as a timeline: meetings with no free time between them share one colored bar, labelled Back to back or Overlaps 15 min where each joins the last; free time shows as a small row, and all-day events sit at the bottom of each day. When the next meeting follows straight on from the top one, the top meeting's bar runs down into the list and its Join button moves in beside it. Today's meetings follow the top card with no extra header; a later first day is labelled Upcoming, and days with nothing on are skipped. Times include the duration, e.g. `9:30 PM - 9:55 PM (25 min)` |
+| Dropdown with upcoming events grouped by day | Yes, as a timeline: meetings with no free time between them share one colored bar, labelled Back to back or Overlaps 15 min where each joins the last; free time shows as a small row, and declined meetings (struck through) then all-day events sit at the bottom of each day with a dimmed bar. When the next meeting follows straight on from the top one, the top meeting's bar runs down into the list and its Join button moves in beside it. Today's meetings follow the top card with no extra header; a later first day is labelled Upcoming, and days with nothing on are skipped. Times include the duration, e.g. `9:30 PM - 9:55 PM (25 min)` |
 | Big "Join Google Meet" button for the current/next meeting | Yes, in a band across the top of the dropdown. Click it to show or hide each guest's email address and reply (accepted, declined, maybe or no reply). Meet, Zoom, Teams, Webex, Slack huddles, Whereby, Around, Chime, GoTo, Jitsi, Discord, FaceTime, Skype |
 | Quick actions: join a meeting | Yes. The top card's Join button, Join on hovering any row, ⌥V, or Return in the dropdown |
+| Meeting ended early | Click the checkmark on the top card, or press ⌘D in the dropdown, and Upnext moves on to the next meeting. Undo with Restore in the ⋯ menu until the meeting's scheduled end |
 | Event details: guests and their RSVP, rooms, notes | Yes, click a row |
-| Include events: days, all-day, without participants, without conferencing/location | Yes, in Settings > Menu bar |
+| Include events: days, all-day, without participants, without conferencing/location | Yes, plus declined events, in Settings > Menu bar |
+| Hide events by title | Yes, in Settings > Menu bar > Hide events titled. "Out of office" is listed by default. The whole title must match, ignoring case |
 | Late-night meetings count toward the day they belong to | Yes. A day runs from 4 AM to 4 AM by default, so a 12:30 AM call stays under today. Change it in Settings > Menu bar > New day starts at |
 | Hide individual calendars from the menu bar | Yes, in Settings > Calendars (also stops their alerts) |
 | Upcoming meeting popup with Join button, over full screen apps | Yes, top right. Plays a macOS sound or any audio file macOS can decode (not Ogg or WebM; Upnext checks when you choose one). Settings > Notifications |
-| Global shortcuts: toggle menu bar calendar, join next meeting | ⌥K and ⌥V (Cron's defaults). Return joins and Esc closes inside the dropdown |
+| Global shortcuts: toggle menu bar calendar, join next meeting | ⌥K and ⌥V (Cron's defaults). Return joins, ⌘D marks the current meeting done and Esc closes inside the dropdown |
 | Open at login | Yes |
 | Change your RSVP from the menu bar | No. macOS's calendar framework is read-only for responses. Use "Open in Calendar" |
 
-Small extras: Meet links open with your Google account (`authuser`), Zoom and Teams links open straight in their apps when installed, Outlook SafeLinks are unwrapped, duplicate copies of the same meeting across calendars are merged, and declined or canceled events are hidden.
+Small extras: Meet links open with your Google account (`authuser`), Zoom and Teams links open straight in their apps when installed, Outlook SafeLinks are unwrapped, duplicate copies of the same meeting across calendars are merged, and canceled events are hidden.
 
 ## Where the events come from
 

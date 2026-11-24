@@ -97,6 +97,10 @@ struct CalendarEvent: Identifiable {
         !isAllDay && start <= now && now < end
     }
 
+    /// A timed event you're going to: it takes part in the timeline, the top card and alerts.
+    /// All-day events and declined meetings are listed below the timeline instead.
+    var isBusy: Bool { !isAllDay && myStatus != .declined }
+
     var isMeeting: Bool { meeting != nil || !guests.isEmpty }
     var dedupeKey: String { "\(title)|\(start.timeIntervalSince1970)|\(end.timeIntervalSince1970)" }
 

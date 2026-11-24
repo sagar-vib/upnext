@@ -46,7 +46,7 @@ final class MeetingAlertController: ObservableObject {
         if let lead = prefs.alertLead.seconds {
             let due = store.events.filter { event in
                 event.isMeeting
-                    && !event.isAllDay
+                    && store.isActive(event, at: now)
                     && !alerted.contains(event.id)
                     && now >= event.start.addingTimeInterval(-lead)
                     && now < min(event.end, event.start.addingTimeInterval(5 * 60))
@@ -59,7 +59,8 @@ final class MeetingAlertController: ObservableObject {
             }
         }
 
-        let expired = items.filter { now >= $0.end || now >= $0.start.addingTimeInterval(10 * 60) }
+        // Ended, marked done, or showing for 10 minutes.
+        let expired = items.filter { !store.isActive($0, at: now) || now >= $0.start.addingTimeInterval(10 * 60) }
         if !expired.isEmpty {
             expired.forEach { dismiss($0) }
         }

@@ -88,6 +88,9 @@ final class Preferences: ObservableObject {
     /// Hour the day starts at; meetings before it belong to the previous day.
     @Published var dayStartHour = Preferences.value("dayStartHour", 4) { didSet { save("dayStartHour", dayStartHour) } }
     @Published var includeAllDay = Preferences.value("includeAllDay", true) { didSet { save("includeAllDay", includeAllDay) } }
+    @Published var includeDeclined = Preferences.value("includeDeclined", true) { didSet { save("includeDeclined", includeDeclined) } }
+    /// Events with one of these titles are left out entirely, whoever created them.
+    @Published var hiddenTitles = Preferences.value("hiddenTitles", ["Out of office"]) { didSet { save("hiddenTitles", hiddenTitles) } }
     @Published var includeWithoutGuests = Preferences.value("includeWithoutGuests", true) { didSet { save("includeWithoutGuests", includeWithoutGuests) } }
     @Published var includeWithoutLocation = Preferences.value("includeWithoutLocation", true) { didSet { save("includeWithoutLocation", includeWithoutLocation) } }
     @Published var hiddenCalendarIDs = Set(Preferences.value("hiddenCalendarIDs", [String]())) { didSet { save("hiddenCalendarIDs", Array(hiddenCalendarIDs)) } }
@@ -103,6 +106,21 @@ final class Preferences: ObservableObject {
     private init() {}
 
     var workDay: WorkDay { WorkDay(startHour: dayStartHour) }
+
+    /// `hiddenTitles` in the form event titles are matched in.
+    var hiddenTitleKeys: Set<String> { Set(hiddenTitles.map(Self.titleKey)) }
+
+    /// Adds a title to hide, unless it's blank or already listed.
+    func hideTitle(_ title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !hiddenTitleKeys.contains(Self.titleKey(trimmed)) else { return }
+        hiddenTitles.append(trimmed)
+    }
+
+    /// Titles match as a whole, ignoring case and surrounding spaces.
+    nonisolated static func titleKey(_ title: String) -> String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 
     private func save(_ key: String, _ value: Any) {
         UserDefaults.standard.set(value, forKey: key)

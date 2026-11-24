@@ -63,6 +63,7 @@ private struct GeneralSettings: View {
             }
             Section("In the menu bar calendar") {
                 LabeledContent("Join current or next meeting", value: "Return")
+                LabeledContent("Mark current meeting as done", value: "⌘D")
                 LabeledContent("Close", value: "Esc")
             }
         }
@@ -88,6 +89,7 @@ private struct GeneralSettings: View {
 
 private struct MenuBarSettings: View {
     @ObservedObject var prefs: Preferences
+    private let newHiddenTitle = State(initialValue: "") // see IconButton
 
     var body: some View {
         Form {
@@ -105,6 +107,7 @@ private struct MenuBarSettings: View {
                     ForEach(DayRange.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("All-day events", isOn: $prefs.includeAllDay)
+                Toggle("Declined events", isOn: $prefs.includeDeclined)
                 Toggle("Events without guests", isOn: $prefs.includeWithoutGuests)
                 Toggle("Events without video link or location", isOn: $prefs.includeWithoutLocation)
                 Picker("New day starts at", selection: $prefs.dayStartHour) {
@@ -116,8 +119,38 @@ private struct MenuBarSettings: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            Section("Hide events titled") {
+                ForEach(prefs.hiddenTitles, id: \.self) { title in
+                    HStack {
+                        Text(title)
+                        Spacer()
+                        Button {
+                            prefs.hiddenTitles.removeAll { $0 == title }
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .help("Show events titled \u{201C}\(title)\u{201D} again")
+                    }
+                }
+                HStack {
+                    TextField("Title", text: newHiddenTitle.projectedValue, prompt: Text("Add a title, e.g. Focus time"))
+                        .labelsHidden()
+                        .onSubmit(addHiddenTitle)
+                    Button("Add", action: addHiddenTitle)
+                        .disabled(newHiddenTitle.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                Text("Matches the whole title, ignoring case, whoever created the event. Hidden events don't show in the menu bar and don't trigger meeting alerts.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+    }
+
+    private func addHiddenTitle() {
+        prefs.hideTitle(newHiddenTitle.wrappedValue)
+        newHiddenTitle.wrappedValue = ""
     }
 }
 

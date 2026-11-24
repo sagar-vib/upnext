@@ -26,7 +26,13 @@ struct PanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(day: prefs.workDay.start(containing: clock.now), calendarApp: prefs.calendarApp, commands: commands)
+            PanelHeader(
+                day: prefs.workDay.start(containing: clock.now),
+                calendarApp: prefs.calendarApp,
+                doneEvents: store.doneEvents(at: clock.now),
+                restore: { store.restore($0) },
+                commands: commands
+            )
             Divider()
             switch store.access {
             case .notDetermined:
@@ -41,7 +47,8 @@ struct PanelView: View {
                     now: clock.now,
                     workDay: prefs.workDay,
                     joinShortcut: prefs.globalShortcuts ? HotKey.joinMeeting.display : nil,
-                    scrollResetToken: session.closes
+                    scrollResetToken: session.closes,
+                    markDone: { store.markDone($0) }
                 )
             }
         }
@@ -53,6 +60,9 @@ struct PanelView: View {
 private struct PanelHeader: View {
     let day: Date
     let calendarApp: CalendarApp
+    /// Meetings marked done that are still on, offered in the menu to undo.
+    let doneEvents: [CalendarEvent]
+    let restore: (CalendarEvent) -> Void
     let commands: PanelCommands
 
     var body: some View {
@@ -69,6 +79,12 @@ private struct PanelHeader: View {
                 EventActions.openCalendarApp()
             }
             Menu {
+                ForEach(doneEvents) { event in
+                    Button("Restore \u{201C}\(Fmt.truncate(event.title, to: 40))\u{201D}") { restore(event) }
+                }
+                if !doneEvents.isEmpty {
+                    Divider()
+                }
                 Button("Settings…", action: commands.openSettings)
                 Button("Refresh", action: commands.refresh)
                 Divider()
@@ -94,6 +110,7 @@ private struct Agenda: View {
     let workDay: WorkDay
     let joinShortcut: String?
     let scrollResetToken: Int
+    let markDone: (CalendarEvent) -> Void
 
     var body: some View {
         if let featured {
@@ -102,7 +119,8 @@ private struct Agenda: View {
                 now: now,
                 workDay: workDay,
                 joinShortcut: joinShortcut,
-                continuesIntoList: sections.first?.joinsTopMeeting == true
+                continuesIntoList: sections.first?.joinsTopMeeting == true,
+                markDone: { markDone(featured) }
             )
             .id(featured.id)
             if !sections.isEmpty {
@@ -119,13 +137,14 @@ private struct Agenda: View {
 
 /// The current or next meeting, filling the band between the dividers. Clicking it shows or
 /// hides the guests. When the next meeting follows straight on, its bar runs down to the list
-/// and the Join button moves in beside it.
+/// and the Join button moves in beside it. While the meeting is on, a checkmark ends it early.
 private struct FeaturedSection: View {
     let event: CalendarEvent
     let now: Date
     let workDay: WorkDay
     let joinShortcut: String?
     let continuesIntoList: Bool
+    let markDone: () -> Void
     // Plain `State` storage, see IconButton.
     private let showsGuests = State(initialValue: false)
     private let hovering = State(initialValue: false)
@@ -140,6 +159,10 @@ private struct FeaturedSection: View {
                 Text(Fmt.range(event))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                if event.isOngoing(at: now) {
+                    IconButton(systemImage: "checkmark.circle", help: "Mark as done (⌘D)", height: 18, action: markDone)
+                        .padding(.vertical, -2)
+                }
             }
 
             if continuesIntoList {
@@ -267,9 +290,9 @@ private struct EventList: View {
                         .timelineBar(run.color, continuesAbove: run.continuesAbove)
                     case .gap(_, let length):
                         GapRow(length: length)
-                    case .allDay(let event):
+                    case .aside(let event):
                         row(event, in: section)
-                            .timelineBar(event.color)
+                            .timelineBar(event.color.opacity(0.35))
                             .padding(.top, 4)
                     }
                 }

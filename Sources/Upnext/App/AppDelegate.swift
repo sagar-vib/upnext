@@ -77,6 +77,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         EventActions.join(event)
     }
 
+    /// Ends the top card's meeting early, so the dropdown and menu bar move on to the next one.
+    private func markCurrentDone() {
+        let now = Date()
+        guard let event = store.featured(at: now), event.isOngoing(at: now) else {
+            NSSound.beep()
+            return
+        }
+        store.markDone(event)
+    }
+
     private func handlePanelKey(_ event: NSEvent) -> Bool {
         switch event.keyCode {
         case 53: // Esc
@@ -84,6 +94,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         case 36, 76: // Return, Enter
             joinUpcoming()
+            return true
+        case 2 where event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command: // ⌘D
+            markCurrentDone()
             return true
         default:
             return false

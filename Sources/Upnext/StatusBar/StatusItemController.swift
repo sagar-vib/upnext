@@ -31,9 +31,10 @@ final class StatusItemController: NSObject {
         }
 
         // @Published fires before the value changes, so render on the next run loop pass.
-        Publishers.Merge3(
+        Publishers.Merge4(
             clock.$now.map { _ in () },
             store.$events.map { _ in () },
+            store.$markedDone.map { _ in () },
             prefs.objectWillChange.map { _ in () }
         )
         .receive(on: RunLoop.main)

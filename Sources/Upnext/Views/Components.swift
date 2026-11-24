@@ -61,6 +61,7 @@ struct PanelSurface: ViewModifier {
 struct IconButton: View {
     let systemImage: String
     let help: String
+    var height: CGFloat = 22
     let action: () -> Void
     // `State` as a plain stored property rather than `@State`: in the macOS 27 SDK `@State` is a
     // macro whose plugin ships only with Xcode, so `@State` breaks Command Line Tools builds.
@@ -73,7 +74,7 @@ struct IconButton: View {
         } label: {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .medium))
-                .frame(width: 26, height: 22)
+                .frame(width: 26, height: height)
                 .background(hovering.wrappedValue ? Color.primary.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .contentShape(Rectangle())
         }
