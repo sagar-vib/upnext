@@ -45,15 +45,15 @@ That builds a release binary, wraps it in `Upnext.app`, signs it ad hoc, copies 
 
 On first launch macOS asks for calendar access. If you dismiss it, click the menu bar icon and choose **Allow Calendar Access**, or enable Upnext in System Settings > Privacy & Security > Calendars.
 
-### Keeping calendar permission across rebuilds
+### Signing
 
-Ad hoc signatures change on every build, so macOS may ask for calendar access again after a rebuild. Sign with your own certificate to avoid that:
+The desktop widget needs an Apple Development certificate: macOS 26 and later drop widgets that aren't signed by a team. A certificate also keeps the calendar permission between rebuilds, which ad hoc signatures don't, because they change on every build. A free Apple ID is enough:
 
-```bash
-CODESIGN_IDENTITY="Apple Development: you@example.com" ./build.sh --install
-```
+1. Install Xcode from the App Store and open it once.
+2. In Xcode > Settings > Accounts, add your Apple ID. It gets a free Personal Team.
+3. Select the team, click Manage Certificates, then + > Apple Development.
 
-`security find-identity -v -p codesigning` lists the identities on your Mac.
+`build.sh` then signs with that certificate on its own. To pick a different identity, set `CODESIGN_IDENTITY` to its name or SHA-1 from `security find-identity -v -p codesigning`. Without a certificate it signs ad hoc and warns that the widget won't appear.
 
 ## Continuous build
 
@@ -115,6 +115,6 @@ Sources/Upnext/
 - **The icon doesn't appear**: on a MacBook with a notch, too many menu bar items can push it behind the notch. Hold ⌘ and drag it closer to the clock, or turn off "Event title" in Settings > Menu bar to make it narrower.
 - **A Google meeting has no Join button**: check that the event shows the Meet link in Apple Calendar too. If Apple Calendar doesn't have it, Upnext can't see it either.
 - **⌥K or ⌥V no longer types ˚ or √**: system-wide shortcuts take those keys everywhere, same as Notion Calendar. Turn them off in Settings > General, or change them in `Support/HotKeys.swift`.
-- **Upnext isn't in the widget gallery**: install to `/Applications` with `./build.sh --install` and open Upnext once. If it's still missing, sign with your own certificate (see Keeping calendar permission across rebuilds), since some macOS versions skip ad hoc signed widgets. `pluginkit -m -p com.apple.widgetkit-extension | grep upnext` shows whether macOS registered it.
+- **Upnext isn't in the widget gallery**: check that `build.sh` printed `Signing with: Apple Development: ...` (see Signing), then open Upnext once from `/Applications`. `pluginkit -m -v -p com.apple.widgetkit-extension | grep upnext` shows whether macOS registered it and from where; only the `/Applications` copy should be listed. `/usr/bin/log show --last 5m --info --debug --predicate 'process == "chronod"' --style compact | grep -i upnext` shows whether the widget answered: `getAllDescriptors result` means it did, `purging` means macOS rejected its signature.
 - **The widget shows old meetings or "Open Upnext"**: the widget draws what Upnext writes to `~/Library/Application Support/Upnext/Widget.json`, so Upnext has to be running. Desktop widgets turn monochrome while another app is in front, so the gap colors only show when you're looking at the desktop.
 - **Open at login doesn't stick**: install to `/Applications` first (`./build.sh --install`), then approve Upnext in System Settings > General > Login Items if macOS asks.

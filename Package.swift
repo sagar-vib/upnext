@@ -14,7 +14,11 @@ let package = Package(
         .executableTarget(
             name: "UpnextWidget",
             dependencies: ["UpnextShared"],
-            path: "Sources/UpnextWidget"
+            path: "Sources/UpnextWidget",
+            // Widget extensions start in NSExtensionMain, as Xcode links them. From the Swift entry
+            // point the process exits before WidgetKit can ask for its widgets, so the gallery
+            // never lists them.
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])]
         ),
         // The snapshot the app writes for the widget, and the timeline pieces both draw.
         .target(

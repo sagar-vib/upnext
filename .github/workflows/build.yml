@@ -93,6 +93,12 @@ jobs:
           plutil -p build/Upnext.app/Contents/PlugIns/UpnextWidget.appex/Contents/Info.plist
           echo "Widget entitlements:"
           codesign -d --entitlements - build/Upnext.app/Contents/PlugIns/UpnextWidget.appex
+          bin=build/Upnext.app/Contents/PlugIns/UpnextWidget.appex/Contents/MacOS/UpnextWidget
+          if ! nm -u "$bin" | grep -qx _NSExtensionMain; then
+            echo "::error::The widget doesn't start in NSExtensionMain, so WidgetKit can't load it"
+            exit 1
+          fi
+          echo "Widget starts in NSExtensionMain."
 
       - name: Register the desktop widget
         run: |
