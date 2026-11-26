@@ -26,6 +26,17 @@
     <true/>
     <key>NSAppSleepDisabled</key>
     <true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.sidd.upnext</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>upnext</string>
+            </array>
+        </dict>
+    </array>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Upnext shows your upcoming events and meeting links in the menu bar.</string>
     <key>NSCalendarsUsageDescription</key>

@@ -20,6 +20,7 @@ A native macOS menu bar calendar modeled on Notion Calendar's menu bar widget. S
 | Upcoming meeting popup with Join button, over full screen apps | Yes, top right. Plays a macOS sound or any audio file macOS can decode (not Ogg or WebM; Upnext checks when you choose one). Settings > Notifications |
 | Global shortcuts: toggle menu bar calendar, join next meeting | ⌥K and ⌥V (Cron's defaults). Return joins, ⌘D marks the current meeting done and Esc closes inside the dropdown |
 | Open at login | Yes |
+| Desktop widget | Yes: small (the current or next meeting), medium (plus the next 3) and large (the whole dropdown list, colored gaps and all). Right-click the desktop, choose Edit Widgets and search for Upnext. Clicking it opens the dropdown; Join opens the meeting |
 | Light or dark look | Yes, in Settings > General > Appearance: Light, Dark or System. Applies to the dropdown, meeting alerts and Settings; the menu bar item always matches the menu bar |
 | Change your RSVP from the menu bar | No. macOS's calendar framework is read-only for responses. Use "Open in Calendar" |
 
@@ -56,7 +57,7 @@ CODESIGN_IDENTITY="Apple Development: you@example.com" ./build.sh --install
 
 ## Continuous build
 
-Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, with the newest Xcode on macOS 26, and on macOS 26 with only the newest Command Line Tools Apple offers for it, then launches it for 10 seconds to catch crashes on startup. A separate check fails the build if any SwiftUI macro such as `@State` appears in the sources, because on the macOS 27 SDK those need a plugin that only Xcode ships. See `.github/workflows/build.yml`.
+Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, with the newest Xcode on macOS 26, and on macOS 26 with only the newest Command Line Tools Apple offers for it. It checks the widget's signature and sandbox, has macOS register the widget, launches the app for 10 seconds to catch crashes on startup, and checks that it wrote the widget's snapshot. A separate check fails the build if any SwiftUI macro such as `@State` appears in the sources, because on the macOS 27 SDK those need a plugin that only Xcode ships. See `.github/workflows/build.yml`.
 
 ## Editing in Xcode
 
@@ -67,7 +68,14 @@ Every push builds the app on GitHub Actions on macOS 15 with Xcode 16, with the 
 ```
 Package.swift
 build.sh                         builds and signs Upnext.app
-Resources/Info.plist             menu bar only app (LSUIElement), calendar usage text
+Resources/Info.plist             menu bar only app (LSUIElement), calendar usage text, upnext:// URL
+Resources/UpnextWidget-*         the widget extension's Info.plist and sandbox entitlements
+Sources/UpnextShared/            used by the app and the widget
+  WidgetSnapshot.swift           what the widget shows at each moment, and where the file lives
+  Timeline.swift                 timeline bars, gap rows and join labels
+Sources/UpnextWidget/            the desktop widget (PlugIns/UpnextWidget.appex)
+  UpnextWidget.swift             widget, timeline provider, gallery sample
+  AgendaWidgetView.swift         small, medium and large layouts
 Sources/Upnext/
   main.swift                     entry point
   App/AppDelegate.swift          wires everything together, shortcuts, panel placement
@@ -85,6 +93,8 @@ Sources/Upnext/
     AlertSound.swift             meeting alert sound: a macOS sound or an audio file
     EventActions.swift           join, open in Calendar / Google Calendar
     Formatting.swift             times, durations and labels
+    WidgetSnapshotBuilder.swift  works out the widget's contents for each moment ahead
+    WidgetPublisher.swift        writes the widget's snapshot and asks WidgetKit to redraw
   Views/
     PanelView.swift              the dropdown: header, top card, event list
     EventRow.swift               rows and expanded details
@@ -105,4 +115,6 @@ Sources/Upnext/
 - **The icon doesn't appear**: on a MacBook with a notch, too many menu bar items can push it behind the notch. Hold ⌘ and drag it closer to the clock, or turn off "Event title" in Settings > Menu bar to make it narrower.
 - **A Google meeting has no Join button**: check that the event shows the Meet link in Apple Calendar too. If Apple Calendar doesn't have it, Upnext can't see it either.
 - **⌥K or ⌥V no longer types ˚ or √**: system-wide shortcuts take those keys everywhere, same as Notion Calendar. Turn them off in Settings > General, or change them in `Support/HotKeys.swift`.
+- **Upnext isn't in the widget gallery**: install to `/Applications` with `./build.sh --install` and open Upnext once. If it's still missing, sign with your own certificate (see Keeping calendar permission across rebuilds), since some macOS versions skip ad hoc signed widgets. `pluginkit -m -p com.apple.widgetkit-extension | grep upnext` shows whether macOS registered it.
+- **The widget shows old meetings or "Open Upnext"**: the widget draws what Upnext writes to `~/Library/Application Support/Upnext/Widget.json`, so Upnext has to be running. Desktop widgets turn monochrome while another app is in front, so the gap colors only show when you're looking at the desktop.
 - **Open at login doesn't stick**: install to `/Applications` first (`./build.sh --install`), then approve Upnext in System Settings > General > Login Items if macOS asks.

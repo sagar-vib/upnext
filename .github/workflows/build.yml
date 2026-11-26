@@ -66,8 +66,8 @@ jobs:
           xcode-select -p
           swift --version
 
-      - name: Lint Info.plist
-        run: plutil -lint Resources/Info.plist
+      - name: Lint property lists
+        run: plutil -lint Resources/Info.plist Resources/UpnextWidget-Info.plist Resources/UpnextWidget.entitlements
 
       - name: Build Upnext.app
         run: |
@@ -88,8 +88,22 @@ jobs:
 
       - name: Verify bundle
         run: |
-          codesign --verify --verbose build/Upnext.app
+          codesign --verify --deep --strict --verbose=2 build/Upnext.app
           plutil -p build/Upnext.app/Contents/Info.plist
+          plutil -p build/Upnext.app/Contents/PlugIns/UpnextWidget.appex/Contents/Info.plist
+          echo "Widget entitlements:"
+          codesign -d --entitlements - build/Upnext.app/Contents/PlugIns/UpnextWidget.appex
+
+      - name: Register the desktop widget
+        run: |
+          # The same check macOS makes before listing the widget in the gallery.
+          pluginkit -a build/Upnext.app/Contents/PlugIns/UpnextWidget.appex
+          sleep 3
+          pluginkit -m -v -p com.apple.widgetkit-extension | tee plugins.txt
+          if ! grep -q com.sidd.upnext.widget plugins.txt; then
+            echo "::error::macOS didn't register the Upnext widget extension"
+            exit 1
+          fi
 
       - name: Launch for 10 seconds
         run: |
@@ -107,3 +121,12 @@ jobs:
             echo "::error::Upnext exited during launch with status $status"
             exit 1
           fi
+
+      - name: Check the widget snapshot
+        run: |
+          file="$HOME/Library/Application Support/Upnext/Widget.json"
+          if [[ ! -s "$file" ]]; then
+            echo "::error::Upnext didn't write the widget snapshot to $file"
+            exit 1
+          fi
+          python3 -m json.tool "$file" | head -40

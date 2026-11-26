@@ -43,6 +43,8 @@ struct CalendarEvent: Identifiable {
     let location: String?
     let notesSummary: String?
     let color: Color
+    /// The calendar's color as sRGB 0xRRGGBB, for the desktop widget.
+    let colorHex: UInt32
     let accountEmail: String?
     let guests: [Attendee]
     let rooms: [String]
@@ -64,7 +66,9 @@ struct CalendarEvent: Identifiable {
         self.isCanceled = event.status == .canceled
         self.location = rawLocation.isEmpty ? nil : rawLocation
         self.notesSummary = NotesCleaner.summary(event.notes)
-        self.color = Color(nsColor: event.calendar?.color ?? .systemBlue)
+        let calendarColor = event.calendar?.color ?? .systemBlue
+        self.color = Color(nsColor: calendarColor)
+        self.colorHex = Self.hex(calendarColor)
         self.meeting = MeetingLinkDetector.detect(url: event.url, location: event.location, notes: event.notes)
 
         let participants = event.attendees ?? []
@@ -108,6 +112,12 @@ struct CalendarEvent: Identifiable {
     var displayLocation: String? {
         guard let location else { return nil }
         return location.range(of: #"^https?://\S+$"#, options: .regularExpression) == nil ? location : nil
+    }
+
+    private static func hex(_ color: NSColor) -> UInt32 {
+        guard let rgb = color.usingColorSpace(.sRGB) else { return 0x007AFF }
+        func byte(_ component: CGFloat) -> UInt32 { UInt32((min(max(component, 0), 1) * 255).rounded()) }
+        return byte(rgb.redComponent) << 16 | byte(rgb.greenComponent) << 8 | byte(rgb.blueComponent)
     }
 
     private static func email(of participant: EKParticipant) -> String? {
