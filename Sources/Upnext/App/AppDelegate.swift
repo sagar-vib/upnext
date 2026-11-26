@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panelSession: PanelSession!
     private var alerts: MeetingAlertController!
     private var settings: SettingsWindowController!
+    private var widget: WidgetPublisher!
     private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -22,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store = CalendarStore(prefs: prefs)
         statusItem = StatusItemController(store: store, clock: clock, prefs: prefs)
         alerts = MeetingAlertController(store: store, clock: clock, prefs: prefs)
+        widget = WidgetPublisher(store: store, prefs: prefs)
 
         panel = HostingPanel(closesOnOutsideClick: true)
         panelSession = PanelSession()
@@ -61,6 +63,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if store.access == .notDetermined {
             Task { await store.requestAccess() }
         }
+    }
+
+    /// The desktop widget opens upnext://open when clicked, to show the dropdown.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard urls.contains(where: { $0.scheme == "upnext" }), let panel, !panel.isVisible else { return }
+        panel.show(makeKey: true)
     }
 
     @objc func openSettings() {

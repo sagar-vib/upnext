@@ -14,6 +14,12 @@ enum Fmt {
         return formatter
     }()
 
+    private static let monthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("MMMMd")
+        return formatter
+    }()
+
     private static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.setLocalizedDateFormatFromTemplate("EEE MMM d")
@@ -41,6 +47,16 @@ enum Fmt {
         }
     }
 
+    /// "Wednesday", for the header above the top card.
+    static func weekday(_ day: Date) -> String {
+        weekdayFormatter.string(from: day)
+    }
+
+    /// "November 25", under the weekday.
+    static func monthDay(_ day: Date) -> String {
+        monthDayFormatter.string(from: day)
+    }
+
     /// "Fri, Nov 20".
     static func shortDate(_ day: Date) -> String {
         shortDateFormatter.string(from: day)
@@ -60,6 +76,11 @@ enum Fmt {
         if minutes < 60 { return "\(minutes) min" }
         let hours = minutes / 60, rest = minutes % 60
         return rest == 0 ? "\(hours) hr" : "\(hours) hr \(rest) min"
+    }
+
+    /// Where a meeting joins the one before it: "Back to back" or "Overlaps 15 min".
+    static func joinLabel(overlap: TimeInterval) -> String {
+        overlap > 0 ? "Overlaps \(duration(overlap))" : "Back to back"
     }
 
     /// Top meeting label: "In 12 min", "Now · 18 min left", "Tomorrow, 9:00 AM".

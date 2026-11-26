@@ -1,54 +1,6 @@
 import AppKit
 import SwiftUI
 
-extension View {
-    /// The calendar-colored bar down the left of an event, or of a run of back-to-back events.
-    /// `continuesAbove` squares its top so it meets the bar of the meeting above.
-    func timelineBar(_ color: Color, continuesAbove: Bool = false) -> some View {
-        padding(.leading, 5)
-            .background(alignment: .leading) {
-                TimelineBarShape(roundedTop: !continuesAbove, roundedBottom: true).fill(color).frame(width: 3)
-            }
-            .padding(.horizontal, 8)
-    }
-}
-
-extension Color {
-    /// One sRGB color, given as 0xRRGGBB, in light mode and another in dark mode.
-    static func adaptive(light: UInt32, dark: UInt32) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            NSColor(hex: appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)
-        })
-    }
-}
-
-private extension NSColor {
-    convenience init(hex: UInt32) {
-        self.init(
-            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
-            green: CGFloat((hex >> 8) & 0xFF) / 255,
-            blue: CGFloat(hex & 0xFF) / 255,
-            alpha: 1
-        )
-    }
-}
-
-/// A 3pt bar whose ends are rounded unless it joins another bar there.
-struct TimelineBarShape: Shape {
-    let roundedTop: Bool
-    let roundedBottom: Bool
-
-    func path(in rect: CGRect) -> Path {
-        UnevenRoundedRectangle(
-            topLeadingRadius: roundedTop ? 1.5 : 0,
-            bottomLeadingRadius: roundedBottom ? 1.5 : 0,
-            bottomTrailingRadius: roundedBottom ? 1.5 : 0,
-            topTrailingRadius: roundedTop ? 1.5 : 0
-        )
-        .path(in: rect)
-    }
-}
-
 struct VisualEffectBackground: NSViewRepresentable {
     var material: NSVisualEffectView.Material = .popover
 
