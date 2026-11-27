@@ -4,12 +4,13 @@ import UpnextShared
 import WidgetKit
 
 /// Keeps the desktop widget's snapshot file current, and asks WidgetKit to redraw the widget
-/// when what it shows changes.
+/// when what it shows changes, and at least hourly.
 @MainActor
 final class WidgetPublisher {
     private let store: CalendarStore
     private let prefs: Preferences
     private var written: WidgetSnapshot?
+    private var reloaded: Date?
     private var cancellables = Set<AnyCancellable>()
 
     init(store: CalendarStore, prefs: Preferences) {
@@ -36,9 +37,10 @@ final class WidgetPublisher {
     }
 
     private func publish() {
-        let snapshot = WidgetSnapshotBuilder.snapshot(store: store, prefs: prefs, now: Date())
+        let now = Date()
+        let snapshot = WidgetSnapshotBuilder.snapshot(store: store, prefs: prefs, now: now)
         guard snapshot != written else { return }
-        let changed = WidgetSnapshotBuilder.changed(from: written, to: snapshot)
+        let reload = WidgetSnapshotBuilder.needsReload(from: written, to: snapshot, lastReload: reloaded, now: now)
         do {
             let url = WidgetSnapshotFile.url
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -48,8 +50,9 @@ final class WidgetPublisher {
             NSLog("Upnext couldn't write the widget snapshot: \(error.localizedDescription)")
             return
         }
-        if changed {
+        if reload {
             WidgetCenter.shared.reloadTimelines(ofKind: WidgetSnapshotFile.kind)
+            reloaded = now
         }
     }
 }

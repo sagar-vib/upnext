@@ -25,6 +25,17 @@ enum WidgetSnapshotBuilder {
         return WidgetSnapshot(entries: entries, appearance: appearance)
     }
 
+    /// How often to ask WidgetKit to reload even when nothing visible changed.
+    static let reloadInterval: TimeInterval = 3600
+
+    /// WidgetKit rereads the file only when asked, or at its own hourly reload, which it can put
+    /// off for hours. So ask on every visible change, and at least hourly: that also recovers a
+    /// widget that read the file while it was out of date, as happens right after the Mac wakes.
+    static func needsReload(from old: WidgetSnapshot?, to new: WidgetSnapshot, lastReload: Date?, now: Date) -> Bool {
+        guard let lastReload, now.timeIntervalSince(lastReload) < reloadInterval else { return true }
+        return changed(from: old, to: new)
+    }
+
     /// True when the widget would look different at some moment both snapshots cover, or the
     /// new one shows something the old one never did. Rolling the minutes forward alone isn't
     /// a change, which keeps reloads within WidgetKit's daily budget.
